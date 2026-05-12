@@ -1,7 +1,5 @@
 <?php
 
-use App\Http\Controllers\BidsController;
-use App\Http\Middleware\AppIdAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 

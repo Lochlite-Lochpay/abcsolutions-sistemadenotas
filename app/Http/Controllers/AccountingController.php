@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,14 +11,15 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Invoices;
 use App\Models\Companies;
+use App\Models\Invoices;
+use App\Services\Accounting\AccountingService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use App\Services\Accounting\AccountingService;
 
 class AccountingController extends Controller
 {
@@ -31,13 +33,14 @@ class AccountingController extends Controller
             $company = Companies::where('user_id', $user->id)->findOrFail($request->query('home'));
             $notas = Invoices::orderBy('created_at', 'desc')
                 ->get();
+
             return Inertia::render('Accountings/Index', [
                 'company' => $company,
                 'notas' => $notas,
             ]);
         } else {
             return Inertia::render('Accountings/SelectCompany', [
-                'companies' => Companies::where('user_id', $user->id)->paginate()
+                'companies' => Companies::where('user_id', $user->id)->paginate(),
             ]);
         }
     }
@@ -49,6 +52,7 @@ class AccountingController extends Controller
         $data = $accounting->checkSend($id);
         $invoice->accountings_response = $data;
         $invoice->save();
+
         return redirect()->back();
     }
 

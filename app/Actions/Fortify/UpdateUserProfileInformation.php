@@ -5,9 +5,9 @@ namespace App\Actions\Fortify;
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
-use Illuminate\Support\Str;
 
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
@@ -25,13 +25,15 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
 
-        if(!$user->app_id){
+        if (! $user->app_id) {
             $user->update(['app_id' => Str::uuid()]);
         }
 
         if (isset($input['photo'])) {
             $user->updateProfilePhoto($input['photo']);
         }
+
+        $domain = $input['domain'] ?? null;
 
         if ($input['email'] !== $user->email &&
             $user instanceof MustVerifyEmail) {
@@ -40,7 +42,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $user->forceFill([
                 'name' => $input['name'],
                 'email' => $input['email'],
-                'domain' => $input['domain'],
+                'domain' => $domain,
             ])->save();
         }
     }
@@ -55,7 +57,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $user->forceFill([
             'name' => $input['name'],
             'email' => $input['email'],
-            'domain' => $input['domain'],               
+            'domain' => $input['domain'] ?? null,
             'email_verified_at' => null,
         ])->save();
 

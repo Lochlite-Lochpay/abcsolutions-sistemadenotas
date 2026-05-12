@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,6 +11,7 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Http\Controllers;
 
 use App\Models\Bids;
@@ -25,34 +27,34 @@ class ExportController extends Controller
         $user = auth()->user();
         if ($bidId) {
             $bid = Bids::where('user_id', $user->id)->where('id', $bidId)->with('files')->first();
-            if (!$bid) {
-            return response()->json(['message' => 'Bid não encontrado.'], 404);
+            if (! $bid) {
+                return response()->json(['message' => 'Bid não encontrado.'], 404);
             }
+
             return response()->streamDownload(function () use ($bid) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['id', 'user_id', 'name', 'description', 'files', 'created_at', 'updated_at']);
-            fputcsv($handle, [
-                $bid->id,
-                $bid->user_id,
-                $bid->name,
-                $bid->description ?? 'Sem descrição',
-                collect($bid->files)->pluck('path')->map(function ($path) {
-                 return url('storage/'.$path);
-                })->implode(', '),
-                $bid->created_at,
-                $bid->updated_at,
-            ]);
-            fclose($handle);
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, ['id', 'user_id', 'name', 'description', 'files', 'created_at', 'updated_at']);
+                fputcsv($handle, [
+                    $bid->id,
+                    $bid->user_id,
+                    $bid->name,
+                    $bid->description ?? 'Sem descrição',
+                    collect($bid->files)->pluck('path')->map(function ($path) {
+                        return url('storage/'.$path);
+                    })->implode(', '),
+                    $bid->created_at,
+                    $bid->updated_at,
+                ]);
+                fclose($handle);
             }, "bid_{$bidId}.csv", [
-            'Content-Type' => 'text/csv',
+                'Content-Type' => 'text/csv',
             ]);
-        } 
-        else {
+        } else {
             return inertia('Export', [
                 'bids' => Bids::where('user_id', auth()->id())->when($request->query('search'), function ($query, $search) {
                     return $query->where('name', 'like', "%{$search}%");
                 })->paginate(),
-                'search' => $request->query('search'),                      
+                'search' => $request->query('search'),
             ]);
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,16 +11,14 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Http\Controllers;
 
 use App\Models\Companies;
 use App\Services\Nfse\NfseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;                            
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use CloudDfe\SdkPHP\Base;
-use CloudDfe\SdkPHP\Nfe;
-use CloudDfe\SdkPHP\Nfse;
 
 class NfseController extends Controller
 {
@@ -31,16 +30,17 @@ class NfseController extends Controller
         $user = Auth::user();
         if ($request->query('home')) {
             $company = Companies::where('user_id', $user->id)->findOrFail($request->query('home'));
-    
+
             $nfseService = new NfseService($company, 'Qive');
             $nfseResult = $nfseService->localiza($request);
-            //dd($nfseResult);
+
+            // dd($nfseResult);
             return Inertia::render('Nfse', array_merge([
                 'company' => $company,
             ], $nfseResult, $request->all()));
         } else {
             return Inertia::render('Companies/SelectCompany', [
-                'companies' => Companies::where('user_id', $user->id)->paginate()
+                'companies' => Companies::where('user_id', $user->id)->paginate(),
             ]);
         }
     }

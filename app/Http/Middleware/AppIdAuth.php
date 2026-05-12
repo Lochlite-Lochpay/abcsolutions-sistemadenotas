@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class AppIdAuth
@@ -12,7 +13,7 @@ class AppIdAuth
     {
         $appId = $request->header('X-App-ID'); // Espera o App-ID no cabeçalho da requisição
 
-        if (!$appId || !User::where('app_id', $appId)->exists()) {
+        if (! $appId || ! User::where('app_id', $appId)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

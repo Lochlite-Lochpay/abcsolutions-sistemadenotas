@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -14,11 +15,10 @@ Long live Lochlite! ******/
 namespace App\Http\Controllers;
 
 use App\Models\Settings;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class AdminController extends Controller
 {
@@ -31,19 +31,20 @@ class AdminController extends Controller
         /*** Exibe os posts retornados pela API */
         $user = Auth::user();
 
-        function disckUsage($diretorio = '/') {
+        function disckUsage($diretorio = '/')
+        {
             // Obtém o espaço total do disco em bytes
             $espacoTotal = disk_total_space($diretorio);
-            
+
             // Obtém o espaço livre do disco em bytes
             $espacoLivre = disk_free_space($diretorio);
-            
+
             // Calcula o espaço usado subtraindo o espaço livre do espaço total
             $espacoUsado = $espacoTotal - $espacoLivre;
-            
+
             // Calcula a porcentagem de espaço usado
             $porcentagemUsado = ($espacoUsado / $espacoTotal) * 100;
-            
+
             return $porcentagemUsado;
         }
 
@@ -59,8 +60,8 @@ class AdminController extends Controller
         /*** Exibe os posts retornados pela API */
         $user = Auth::user();
         $users = User::when($request->query('search'), function ($query) use ($request) {
-            $query->where('name', 'like', '%' . $request->query('search') . '%')
-                  ->orWhere('email', 'like', '%' . $request->query('search') . '%');
+            $query->where('name', 'like', '%'.$request->query('search').'%')
+                ->orWhere('email', 'like', '%'.$request->query('search').'%');
         })->orderBy('created_at', 'desc')->paginate();
 
         return inertia('Admin/Users/Index', ['authid' => $user->id, 'users' => $users, 'search' => $request->query('search')]);
@@ -69,6 +70,7 @@ class AdminController extends Controller
     public function personalize()
     {
         $settings = Settings::first();
+
         return inertia('Admin/Personalize', ['settings' => $settings]);
     }
 
@@ -97,10 +99,11 @@ class AdminController extends Controller
         if ($request->hasFile('favicon')) {
             $settings->update(['favicon' => $request->file('favicon')->store('favicons', 'public')]);
         }
-        
+
         $settings->save();
         $request->session()->flash('flash.banner', 'Atualizado com sucesso.');
         $request->session()->flash('flash.bannerStyle', 'success');
+
         return redirect()->route('dashboard.admin.personalize');
     }
 
@@ -127,6 +130,7 @@ class AdminController extends Controller
 
         $request->session()->flash('flash.banner', 'Cadastrado com sucesso.');
         $request->session()->flash('flash.bannerStyle', 'success');
+
         return redirect()->route('dashboard.admin.users');
     }
 
@@ -134,7 +138,7 @@ class AdminController extends Controller
     {
         $user = User::find($id);
 
-        if (!$user) {
+        if (! $user) {
             return back()->withErrors(['message' => 'Usuário não encontrado.'])->with('message', 'Usuário não encontrado.');
         }
 
@@ -159,6 +163,7 @@ class AdminController extends Controller
             }
             $request->session()->flash('flash.banner', 'Atualizado com sucesso.');
             $request->session()->flash('flash.bannerStyle', 'success');
+
             return redirect()->route('dashboard.admin.users');
         } else {
             return back()->withErrors(['message' => 'Usuário não encontrado.'])->with('message', 'Usuário não encontrado.');
@@ -171,6 +176,7 @@ class AdminController extends Controller
 
         if ($thisuser->id == $id) {
             session()->flash('message', 'Você não pode excluir seu próprio usuário');
+
             return back()->with('message', 'Você não pode excluir seu próprio usuário');
         }
 
@@ -180,9 +186,11 @@ class AdminController extends Controller
             $user->delete();
             $request->session()->flash('flash.banner', 'Excluído com sucesso.');
             $request->session()->flash('flash.bannerStyle', 'success');
+
             return redirect()->route('dashboard.admin.users');
         } else {
             session()->flash('message', 'Usuário não encontrado.');
+
             return back()->withErrors(['message' => 'Usuário não encontrado.']);
         }
     }

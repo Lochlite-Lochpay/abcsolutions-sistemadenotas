@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,15 +11,16 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Services\Nfse\Webservers;
 
-use App\Services\Nfse\Contracts\NfseWebserverInterface;
-use Illuminate\Http\Request;
 use App\Models\Companies;
-use Exception;
-use Illuminate\Support\Facades\Log;
-use CloudDfe\SdkPHP\Nfse;
 use App\Services\Accounting\AccountingService;
+use App\Services\Nfse\Contracts\NfseWebserverInterface;
+use CloudDfe\SdkPHP\Nfse;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class IntegraNotas implements NfseWebserverInterface
 {
@@ -26,41 +28,41 @@ class IntegraNotas implements NfseWebserverInterface
     {
         try {
             $params = [
-                "token" => $company->token,
-                "ambiente" => 1, // 1 - Produção / 2 - Homologação
-                "options" => [
-                    "debug" => true,
-                    "timeout" => 60,
-                    "port" => 443,
-                    "http_version" => CURL_HTTP_VERSION_NONE
-                ]
+                'token' => $company->token,
+                'ambiente' => 1, // 1 - Produção / 2 - Homologação
+                'options' => [
+                    'debug' => true,
+                    'timeout' => 60,
+                    'port' => 443,
+                    'http_version' => CURL_HTTP_VERSION_NONE,
+                ],
             ];
 
             $nfse = new Nfse($params);
 
             $payload = [
-                "nfse_numero_inicial" => $request->get('nfse_numero_inicial'),
-                "nfse_numero_final" => $request->get('nfse_numero_final'),
-                "rps_numero" => $request->get('rps_numero'),
-                "rps_serie" => $request->get('rps_serie'),
-                "rps_tipo" => $request->get('rps_tipo'),
+                'nfse_numero_inicial' => $request->get('nfse_numero_inicial'),
+                'nfse_numero_final' => $request->get('nfse_numero_final'),
+                'rps_numero' => $request->get('rps_numero'),
+                'rps_serie' => $request->get('rps_serie'),
+                'rps_tipo' => $request->get('rps_tipo'),
                 'data_emissao_inicial' => $request->get('data_emissao_inicial', now()->subDays(30)->format('Y-m-d')),
                 'data_emissao_final' => $request->get('data_emissao_final', now()->format('Y-m-d')),
                 'data_competencia_inicial' => $request->get('data_competencia_inicial', now()->subDays(30)->format('Y-m-d')),
                 'data_competencia_final' => $request->get('data_competencia_final', now()->format('Y-m-d')),
-                "tomador_cnpj" => $request->get('tomador_cnpj'),
-                "tomador_cpf" => $request->get('tomador_cpf'),
-                "tomador_im" => $request->get('tomador_im'),
-                "intermediario_cnpj" => $request->get('intermediario_cnpj'),
-                "intermediario_cpf" => $request->get('intermediario_cpf'),
-                "intermediario_im" => $request->get('intermediario_im'),
-                "nfse_numero" => $request->get('nfse_numero'),
-                "pagina" => $request->get('pagina'),
+                'tomador_cnpj' => $request->get('tomador_cnpj'),
+                'tomador_cpf' => $request->get('tomador_cpf'),
+                'tomador_im' => $request->get('tomador_im'),
+                'intermediario_cnpj' => $request->get('intermediario_cnpj'),
+                'intermediario_cpf' => $request->get('intermediario_cpf'),
+                'intermediario_im' => $request->get('intermediario_im'),
+                'nfse_numero' => $request->get('nfse_numero'),
+                'pagina' => $request->get('pagina'),
             ];
 
             $resp = $nfse->localiza($payload);
             $notasArray = [];
-            if (!empty($resp->notas)) {
+            if (! empty($resp->notas)) {
                 // Decodifica base64
                 $gzData = base64_decode($resp->notas);
 
@@ -90,7 +92,7 @@ class IntegraNotas implements NfseWebserverInterface
             }
 
             // Verifica se o serviço de contabilidade está ativo
-            if($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true') {
+            if ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true') {
                 // Envia os dados para o serviço de contabilidade
                 $accounting = new AccountingService($company, 'Nfse', 'Onvio');
                 $accounting->processInvoice($notasArray);
@@ -105,7 +107,8 @@ class IntegraNotas implements NfseWebserverInterface
                 'notasarray' => $notasArray,
             ];
         } catch (Exception $e) {
-            Log::error('Erro no IntegraNotasService: ' . $e->getMessage());
+            Log::error('Erro no IntegraNotasService: '.$e->getMessage());
+
             return [
                 'success' => false,
                 'message' => $e->getMessage() ?? 'Erro ao buscar NFS-e.',

@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');                   
-            $table->string('cnpj')->unique()->nullable();                               
-            $table->string('name')->nullable();                                               
-            $table->text('token')->nullable();                                               
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('cnpj')->unique()->nullable();
+            $table->string('name')->nullable();
+            $table->text('token')->nullable();
             $table->timestamps();
         });
     }

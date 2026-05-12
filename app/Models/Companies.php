@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,6 +11,7 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -33,5 +35,4 @@ class Companies extends Model
         'api_generate_integration_id_accountings',
         'accounting',
     ];
-        
 }

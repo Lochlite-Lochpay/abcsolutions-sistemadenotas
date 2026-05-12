@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -13,16 +14,16 @@ Long live Lochlite! ******/
 
 namespace App\Http\Middleware;
 
-use Illuminate\Http\Request;
 use Closure;
+use Illuminate\Http\Request;
 
-class IsAdmin 
+class IsAdmin
 {
     public function handle(Request $request, Closure $next)
     {
         $user = Auth()->User();
 
-        if (!$user->type == 'admin') {
+        if (! $user->type == 'admin') {
             return response()->json(['message' => 'Conta invalida para essa solicitação.', 'errors' => []], 403);
         }
 

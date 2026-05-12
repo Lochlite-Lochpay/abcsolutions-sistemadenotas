@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('companies', function (Blueprint $table) {                                             
+        Schema::table('companies', function (Blueprint $table) {
             $table->text('personal_integration_id_accountings')->nullable();
             $table->text('api_generate_integration_id_accountings')->nullable();
             $table->boolean('accounting')->nullable();

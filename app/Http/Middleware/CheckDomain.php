@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -13,9 +14,9 @@ Long live Lochlite! ******/
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\User;
 
 class CheckDomain
 {
@@ -23,7 +24,6 @@ class CheckDomain
     {
         $origin = $request->getHost();
         $user = User::where('domain', $origin)->first();
-
 
         return $next($request);
     }

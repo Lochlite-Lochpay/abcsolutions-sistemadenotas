@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -25,12 +26,11 @@ class Settings extends Model
     protected $fillable = [
         'name',
         'night',
-        'auth_social_media',    
-        'auth_client_id',   
-        'auth_client_secret',                           
+        'auth_social_media',
+        'auth_client_id',
+        'auth_client_secret',
         'logo',
         'auth_logo',
         'favicon',
     ];
-
 }

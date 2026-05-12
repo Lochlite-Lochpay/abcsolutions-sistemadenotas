@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,13 +11,13 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Http\Middleware;
 
 use App\Models\Settings;
 use Illuminate\Http\Request;
-use Inertia\Middleware;
-use Closure;
 use Illuminate\Support\Facades\File;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -51,19 +52,20 @@ class HandleInertiaRequests extends Middleware
         $target = storage_path('app/public');
         $link = public_path('storage');
 
-        if (!File::exists($link)) {
+        if (! File::exists($link)) {
             File::link($target, $link);
         }
 
         $dataShere = [
             'settings' => Settings::firstOrCreate(),
         ];
-        if(session('isLoggedAdmin')){
+        if (session('isLoggedAdmin')) {
             $dataShere['isLoggedAdmin'] = session('isLoggedAdmin');
         }
         if (Session()->has('message')) {
             $dataShere['flash']['message'] = session('message');
         }
+
         return array_merge(parent::share($request), $dataShere);
     }
 }

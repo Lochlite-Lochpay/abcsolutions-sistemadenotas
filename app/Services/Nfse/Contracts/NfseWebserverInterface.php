@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,6 +11,7 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Services\Nfse\Contracts;
 
 use App\Models\Companies;
@@ -17,5 +19,5 @@ use Illuminate\Http\Request;
 
 interface NfseWebserverInterface
 {
-    public function localiza(Request $request, Companies $company): mixed;  
+    public function localiza(Request $request, Companies $company): mixed;
 }

@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,6 +11,7 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -26,6 +28,7 @@ class User extends Authenticatable
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
+
     use HasProfilePhoto;
     use Notifiable;
     use TwoFactorAuthenticatable;
@@ -39,11 +42,11 @@ class User extends Authenticatable
         'name',
         'email',
         'type',
-        'app_id',  
-        'api_token', 
+        'app_id',
+        'api_token',
         'google_id',
         'google_token',
-        'google_refresh_token',         
+        'google_refresh_token',
         'domain',
         'password',
     ];
@@ -85,5 +88,5 @@ class User extends Authenticatable
     public function companies()
     {
         return $this->hasMany(Companies::class);
-    }                   
+    }
 }

@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,6 +11,7 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Services\Nfse\Webservers;
 
 use App\Models\Companies;
@@ -52,7 +54,7 @@ class Qive implements NfseWebserverInterface
             'To' => $request->get('data_emissao_final'),
         ], static fn ($value) => filled($value));
 
-        if (!empty($emissionDate)) {
+        if (! empty($emissionDate)) {
             $filter['emissionDate'] = $emissionDate;
             $filter['createdAt'] = $emissionDate;
         }
@@ -62,7 +64,7 @@ class Qive implements NfseWebserverInterface
             'To' => $request->get('data_competencia_final'),
         ], static fn ($value) => filled($value));
 
-        if (!empty($competence)) {
+        if (! empty($competence)) {
             $filter['competence'] = $competence;
         }
 
@@ -119,7 +121,7 @@ class Qive implements NfseWebserverInterface
 
     protected function buildPaginator(Request $request): ?string
     {
-        if (!$request->filled('pagina')) {
+        if (! $request->filled('pagina')) {
             return null;
         }
 
@@ -134,11 +136,12 @@ class Qive implements NfseWebserverInterface
             return null;
         }
 
-        if (!is_string($xmlDocument)) {
+        if (! is_string($xmlDocument)) {
             return null;
         }
 
         $decoded = base64_decode($xmlDocument, true);
+
         return $decoded === false ? $xmlDocument : $decoded;
     }
 
@@ -158,7 +161,7 @@ class Qive implements NfseWebserverInterface
             $value = json_decode(json_encode($value), true);
         }
 
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return $value;
         }
 
@@ -174,7 +177,7 @@ class Qive implements NfseWebserverInterface
 
     protected function findNodeByAliases(mixed $tree, array $aliases): mixed
     {
-        if (!is_array($tree)) {
+        if (! is_array($tree)) {
             return null;
         }
 
@@ -206,7 +209,7 @@ class Qive implements NfseWebserverInterface
 
         if (is_array($node)) {
             foreach (['value', 'text', '#text', '0'] as $candidate) {
-                if (array_key_exists($candidate, $node) && !is_array($node[$candidate])) {
+                if (array_key_exists($candidate, $node) && ! is_array($node[$candidate])) {
                     return $node[$candidate];
                 }
             }
@@ -233,14 +236,14 @@ class Qive implements NfseWebserverInterface
             return $this->normalizeXmlNode($xmlDocument);
         }
 
-        if (!is_string($xmlDocument)) {
+        if (! is_string($xmlDocument)) {
             return null;
         }
 
         $decoded = $this->extractXmlString($xmlDocument);
 
         $xml = simplexml_load_string($decoded, 'SimpleXMLElement', LIBXML_NOCDATA);
-        if (!$xml) {
+        if (! $xml) {
             return null;
         }
 
@@ -250,12 +253,12 @@ class Qive implements NfseWebserverInterface
     protected function buildCanonicalNfseDocument(array $document): array
     {
         $root = $this->findNodeByAliases($document, ['nfse', 'compnfse', 'nfs-e', 'nfsecomp', 'nfseps', 'notafiscal']);
-        if (!is_array($root)) {
+        if (! is_array($root)) {
             $root = $document;
         }
 
         $inf = $this->findNodeByAliases($root, ['infnfse', 'infnfsse', 'infnfs', 'nfse']) ?? $root;
-        if (!is_array($inf)) {
+        if (! is_array($inf)) {
             $inf = $root;
         }
 
@@ -408,7 +411,7 @@ class Qive implements NfseWebserverInterface
             }
 
             $paginator = $this->buildPaginator($request);
-            if (!empty($paginator)) {
+            if (! empty($paginator)) {
                 $payload['paginator'] = $paginator;
             }
 
@@ -421,11 +424,11 @@ class Qive implements NfseWebserverInterface
             ])->post(self::ENDPOINT, $payload);
 
             $resp = $response->json();
-            if (!is_array($resp)) {
+            if (! is_array($resp)) {
                 $resp = json_decode($response->body(), true) ?? [];
             }
 
-            if (!$response->successful() && empty(data_get($resp, 'nfses'))) {
+            if (! $response->successful() && empty(data_get($resp, 'nfses'))) {
                 throw new Exception(data_get($resp, 'status.message') ?? 'Nenhuma resposta válida foi retornada pela Qive.');
             }
 
@@ -467,7 +470,7 @@ class Qive implements NfseWebserverInterface
                 'signature' => data_get($resp, 'signature'),
             ];
         } catch (Exception $e) {
-            Log::error('Erro no QiveService: ' . $e->getMessage());
+            Log::error('Erro no QiveService: '.$e->getMessage());
 
             return [
                 'success' => false,

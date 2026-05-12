@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,16 +11,16 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Services\Accounting\Converters;
 
-use Exception;
 use Illuminate\Support\Facades\Log;
 
 class NfseXmlVersionConversion
 {
     public function convert(array $notasArray): mixed
     {
-        try {//dd($notasArray);
+        try {// dd($notasArray);
             $novaXml = new \SimpleXMLElement('<CompNfse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd" />');
             if (true) {
                 $nfse = $novaXml->addChild('Nfse');
@@ -142,8 +143,8 @@ class NfseXmlVersionConversion
                 $infDps->addChild('IncentivoFiscal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['IncentivoFiscal']);
 
                 return [
-                'success' => true,
-                'xml' => $novaXml->asXML(),
+                    'success' => true,
+                    'xml' => $novaXml->asXML(),
                 ];
             }
 
@@ -152,7 +153,8 @@ class NfseXmlVersionConversion
                 'message' => 'Erro ao gerar XML.',
             ];
         } catch (\Exception $e) {
-            Log::error('Erro ao converter XML: ' . $e->getMessage());
+            Log::error('Erro ao converter XML: '.$e->getMessage());
+
             return [
                 'success' => false,
                 'message' => $e->getMessage() ?? 'Erro ao gerar XML.',

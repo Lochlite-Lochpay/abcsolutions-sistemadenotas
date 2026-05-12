@@ -1,4 +1,5 @@
 <?php
+
 /****** Another website produced by The Lochlite & Lochpay Company
 ___
 |   |
@@ -10,14 +11,14 @@ ___
 
 
 Long live Lochlite! ******/
+
 namespace App\Services\Accounting\Contracts;
 
-use App\Models\Companies;
 use App\Models\Invoices;
-use Illuminate\Http\Request;
 
 interface AccountingWebserverInterface
 {
     public function convert(array $invoice): mixed;
+
     public function send(Invoices $invoice, string $xml): mixed;
 }
