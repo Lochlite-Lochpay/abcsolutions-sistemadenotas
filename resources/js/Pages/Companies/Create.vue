@@ -24,7 +24,6 @@ const emit = (event, data) => {
 const form = useForm({
     name: '',
     cnpj: '',
-    token: '',
     token_qive: '',
     api_id: '',
     api_key: '',
@@ -73,11 +72,6 @@ const submit = () => {
                     <label for="cnpj" class="block text-gray-700 dark:text-white">CNPJ</label>
                     <input type="text" id="cnpj" v-model="form.cnpj" class="dark:bg-gray-300 dark:text-gray-800 mt-1 block w-full border-gray-300 rounded-md shadow-sm" autocomplete="taxid" required pattern="\d{14}" title="Digite um CNPJ válido com 14 números" @input="form.cnpj = form.cnpj.replace(/\D/g, '').slice(0, 14)">
                     <span v-if="form.errors.cnpj" class="text-red-500 text-sm">{{ form.errors.cnpj }}</span>
-                </div>
-                <div class="mb-4">
-                    <label for="token" class="block text-gray-700 dark:text-white">Token Emitente (IntegraNotas)</label>
-                    <input type="password" id="token" v-model="form.token" class="dark:bg-gray-300 dark:text-gray-800 mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                    <span v-if="form.errors.token" class="text-red-500 text-sm">{{ form.errors.token }}</span>
                 </div>
                 <div class="mb-4 hidden">
                     <label for="tokenqive" class="block text-gray-700 dark:text-white">Token Tomador (Qive)</label>

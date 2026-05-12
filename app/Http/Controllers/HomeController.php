@@ -71,7 +71,7 @@ class HomeController extends Controller
         $request->validate([
             'cnpj' => 'required|string|max:14',
             'name' => 'required|string|max:255',
-            'token' => 'required|string',   
+            'token' => 'nullable|string',
             'token_qive' => 'nullable|string',   
             'api_id' => 'nullable|string',   
             'api_key' => 'nullable|string',  
@@ -90,7 +90,7 @@ class HomeController extends Controller
             'user_id' => $user->id,
             'cnpj' => $request->cnpj,
             'name' => $request->name,
-            'token' => $request->token, 
+            'token' => $request->token,
             'token_qive' => $request->token_qive,                   
             'api_id' => $request->api_id,
             'api_key' => $request->api_key,
@@ -136,7 +136,7 @@ class HomeController extends Controller
         $request->validate([
             'cnpj' => 'required|string|max:14',
             'name' => 'required|string|max:255',
-            'token' => 'required|string', 
+            'token' => 'nullable|string',
             'token_qive' => 'nullable|string', 
             'api_id' => 'nullable|string',
             'api_key' => 'nullable|string', 
@@ -155,7 +155,7 @@ class HomeController extends Controller
         $company->update([
             'cnpj' => $request->cnpj,
             'name' => $request->name,
-            'token' => $request->token,
+            'token' => $request->filled('token') ? $request->token : $company->token,
             'token_qive' => $request->token_qive,       
             'api_id' => $request->api_id,                           
             'api_key' => $request->api_key,   

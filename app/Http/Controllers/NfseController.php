@@ -29,11 +29,10 @@ class NfseController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $webserver = $request->query('webserver', 'tomadas');
         if ($request->query('home')) {
             $company = Companies::where('user_id', $user->id)->findOrFail($request->query('home'));
     
-            $nfseService = new NfseService($company, $webserver == 'tomadas' ? 'IntegraNotas' : 'Qive');
+            $nfseService = new NfseService($company, 'Qive');
             $nfseResult = $nfseService->localiza($request);
             //dd($nfseResult);
             return Inertia::render('Nfse', array_merge([

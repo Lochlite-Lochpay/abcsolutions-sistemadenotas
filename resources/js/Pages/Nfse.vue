@@ -49,7 +49,7 @@ const props = defineProps({
 });
 
 const formsearch = useForm({
-  webserver: 'tomadas',
+  webserver: 'prestadas',
   nfse_numero: props.nfse_numero || '',
   nfse_numero_inicial: props.nfse_numero_inicial || '',
   nfse_numero_final: props.nfse_numero_final || '',
@@ -69,9 +69,106 @@ const formsearch = useForm({
 });
 
 const formsearchreceived = useForm({
-  webserver: 'prestadas',
+  webserver: 'tomadas',
   document: props.document || ''
 });
+
+const activePartyRole = props.webserver === 'tomadas' ? 'emitter' : 'taker';
+
+const formatMoney = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  const number = Number(value);
+  if (Number.isNaN(number)) {
+    return value;
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(number);
+};
+
+const safeJson = (value) => {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    return String(value);
+  }
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : (value ? [value] : []));
+
+const noteJson = (nota) => nota?.jsonDocument || nota?.raw || {};
+
+const noteNumber = (nota) => {
+  return (
+    nota?.number ||
+    noteJson(nota)?.Nfse?.InfNfse?.Numero ||
+    noteJson(nota)?.numero ||
+    noteJson(nota)?.number ||
+    nota?.id ||
+    '-'
+  );
+};
+
+const noteValue = (nota) => {
+  return (
+    nota?.value ||
+    noteJson(nota)?.Nfse?.InfNfse?.ValoresNfse?.ValorLiquidoNfse ||
+    noteJson(nota)?.Nfse?.InfNfse?.ValoresNfse?.ValorServicos ||
+    noteJson(nota)?.value ||
+    '-'
+  );
+};
+
+const noteEmissionDate = (nota) => {
+  return (
+    nota?.emissionDate ||
+    noteJson(nota)?.Nfse?.InfNfse?.DataEmissao ||
+    noteJson(nota)?.emissionDate ||
+    null
+  );
+};
+
+const partyFromNota = (nota, role) => {
+  return role === 'emitter'
+    ? (nota?.emitter || noteJson(nota)?.Nfse?.InfNfse?.PrestadorServico || {})
+    : (nota?.taker || noteJson(nota)?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico || {});
+};
+
+const partyDocument = (party) => {
+  return (
+    party?.CpfCnpj?.Cnpj ||
+    party?.CpfCnpj?.Cpf ||
+    party?.IdentificacaoTomador?.CpfCnpj?.Cnpj ||
+    party?.IdentificacaoTomador?.CpfCnpj?.Cpf ||
+    party?.cnpj ||
+    party?.cpf ||
+    '-'
+  );
+};
+
+const partyName = (party) => {
+  return party?.RazaoSocial || party?.NomeFantasia || party?.name || '-';
+};
+
+const noteXmlHref = (nota) => {
+  const xml = nota?.xmlBase64 || nota?.xml || null;
+  return xml ? `data:text/xml;base64,${xml}` : null;
+};
+
+const noteJsonPretty = (nota) => safeJson(noteJson(nota));
 
 const submit = () => {
   emit('toast', { type: 'connect', message: 'Iniciando conexão...' });
@@ -138,7 +235,7 @@ const submitreceived = () => {
                   type="button"
                   role="tab"
                   aria-controls="profile"
-                  :aria-selected="webserver == 'tomadas' ? true : false"
+                  :aria-selected="webserver == 'prestadas' ? true : false"
                   >Prestadas</Link
                 >
               </li>
@@ -151,7 +248,7 @@ const submitreceived = () => {
                   type="button"
                   role="tab"
                   aria-controls="dashboard"
-                  :aria-selected="webserver == 'prestadas' ? true : false"
+                  :aria-selected="webserver == 'tomadas' ? true : false"
                   >Tomadas</Link
                 >
               </li>
@@ -474,14 +571,14 @@ const submitreceived = () => {
                     </h2>
 
                     <a
-                      :href="'data:application/gz;base64,' + notas"
+                      :href="'data:application/json;base64,' + notas"
                       class="font-bold shadow-sm rounded-lg py-1.5 px-3 bg-orange-600 text-white flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none hover:shadow focus:shadow-sm focus:shadow-outline"
-                      download="notas.gz"
+                      download="notas-qive.json"
                     >
-                      Baixar o xml das notas
+                      Baixar o retorno JSON
                     </a>
                   </div>
-                  <template v-if="success && notas?.length">
+                  <template v-if="success && notasarray?.length">
                     <div v-if="notasarray.length">
                       <div class="overflow-x-auto">
                         <table
@@ -857,7 +954,7 @@ const submitreceived = () => {
                   </div>
                 </div>
               </form>
-              <template v-if="success && notas?.length">
+              <template v-if="success && notasarray?.length">
                 <div v-if="notasarray.length">
                       <div class="overflow-x-auto">
                         <table
@@ -901,7 +998,7 @@ const submitreceived = () => {
                                   {{ new Date(nota?.Nfse?.InfNfse?.DataEmissao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-700">
-                                  <a :href="'data:text/xml;base64,' + notas[i]?.xml" class="text-blue-700 hover:text-violet-800" :download="'nota_' + nota?.Nfse?.InfNfse?.Numero + '.xml'">Baixar</a>
+                                  <a :href="'data:text/xml;base64,' + nota?.xml" class="text-blue-700 hover:text-violet-800" :download="'nota_' + nota?.Nfse?.InfNfse?.Numero + '.xml'">Baixar</a>
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-700">
                                   <button

@@ -15,7 +15,6 @@ namespace App\Services\Nfse;
 use App\Exceptions\UnsupportedWebserverException;
 use App\Models\Companies;
 use App\Services\Nfse\Contracts\NfseWebserverInterface;
-use App\Services\Nfse\Webservers\IntegraNotas;
 use App\Services\Nfse\Webservers\Qive;
 use App\Services\Nfse\NfseXmlVersionConversion;
 
@@ -24,7 +23,7 @@ class NfseService
     protected Companies $company;
     protected NfseWebserverInterface $webserver;
 
-    public function __construct(Companies $company, ?string $webserverName = "IntegraNotas")
+    public function __construct(Companies $company, ?string $webserverName = "Qive")
     {
         // Se não houver empresa, pega a primeira empresa do usuário        
         if (!$company) {
@@ -42,7 +41,6 @@ class NfseService
     protected function resolveWebserver(string $name): NfseWebserverInterface
     {
         return match ($name) {
-            'IntegraNotas' => new IntegraNotas(),
             'Qive' => new Qive(),
             default => throw new UnsupportedWebserverException($name),
         };
