@@ -172,7 +172,7 @@ const noteJsonPretty = (nota) => safeJson(noteJson(nota));
 
 const submit = () => {
   emit('toast', { type: 'connect', message: 'Iniciando conexão...' });
-    formsearch.get(route('dashboard.nfse.index', {home: props.company.id}), {
+    formsearch.get(route('dashboard.nfse.index', {id: props.company.id}), {
       onStart: () => {
             emit('toast', { type: 'connect', message: 'Buscando notas...' });
             console.log('Buscando notas...');
@@ -192,7 +192,7 @@ const submit = () => {
   }
 const submitreceived = () => {
   emit('toast', { type: 'connect', message: 'Iniciando conexão...' });
-    formsearchreceived.get(route('dashboard.nfse.index', {home: props.company.id}), {
+    formsearchreceived.get(route('dashboard.nfse.index', {id: props.company.id}), {
       onStart: () => {
             emit('toast', { type: 'connect', message: 'Buscando notas...' });
             console.log('Buscando notas...');
@@ -228,7 +228,7 @@ const submitreceived = () => {
             >
               <li class="me-2" role="presentation">
                 <Link
-                  :href="route('dashboard.nfse.index', {home: props.company.id, webserver: 'prestadas'})"
+                  :href="route('dashboard.nfse.index', {id: props.company.id, webserver: 'prestadas'})"
                   class="inline-block p-4 border-b-2 rounded-t-lg"
                   id="profile-tab"
                   data-tabs-target="#profile"
@@ -241,7 +241,7 @@ const submitreceived = () => {
               </li>
               <li class="me-2" role="presentation">
                 <Link
-                  :href="route('dashboard.nfse.index', {home: props.company.id, webserver: 'tomadas'})"
+                  :href="route('dashboard.nfse.index', {id: props.company.id, webserver: 'tomadas'})"
                   class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
                   id="dashboard-tab"
                   data-tabs-target="#dashboard"
@@ -578,7 +578,7 @@ const submitreceived = () => {
                       Baixar o retorno JSON
                     </a>
                   </div>
-                  <template v-if="success && notasarray?.length">
+                  <template v-if="success">
                     <div v-if="notasarray.length">
                       <div class="overflow-x-auto">
                         <table
@@ -876,6 +876,11 @@ const submitreceived = () => {
                         Nenhuma nota fiscal encontrada.
                       </p>
                     </div>
+                    <div v-else class="flex items-center p-4 mb-4 text-blue-800 border-t-4 border-blue-300 bg-blue-50 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-800" role="alert">
+                      <div class="ms-3 text-sm font-medium">
+                        Nenhuma nota encontrada para os filtros informados.
+                      </div>
+                    </div>
                   </template>
                   <template v-else>
                     <div
@@ -954,7 +959,7 @@ const submitreceived = () => {
                   </div>
                 </div>
               </form>
-              <template v-if="success && notasarray?.length">
+              <template v-if="success">
                 <div v-if="notasarray.length">
                       <div class="overflow-x-auto">
                         <table
@@ -1271,6 +1276,11 @@ const submitreceived = () => {
                   </svg>
                   <div class="ms-3 text-sm font-medium">
                     {{ code + ': ' + message }}
+                  </div>
+                </div>
+                <div v-else class="flex items-center p-4 mb-4 text-blue-800 border-t-4 border-blue-300 bg-blue-50 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-800" role="alert">
+                  <div class="ms-3 text-sm font-medium">
+                    Nenhuma nota encontrada para os filtros informados.
                   </div>
                 </div>
               </template>

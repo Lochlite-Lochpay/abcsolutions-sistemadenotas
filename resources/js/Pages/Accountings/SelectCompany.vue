@@ -52,7 +52,7 @@ const companies = ref(props.companies);
                             <td class="px-6 py-4">{{ it.cnpj }}</td>
                             <td class="px-6 py-4">{{ new Date(it.created_at).toLocaleDateString() }}</td>
                             <td class="flex px-6 py-4 text-right">
-                                <Link :href="route('dashboard.accounting.index', {home: it.id})" class="font-medium text-blue-600 dark:text-blue-500 hover:underline me-3">Selecionar</Link>
+                                <Link :href="route('dashboard.accounting.index', {id: it.id})" class="font-medium text-blue-600 dark:text-blue-500 hover:underline me-3">Selecionar</Link>
                             </td>
                         </tr>
                     </tbody>

@@ -394,8 +394,24 @@ class Qive implements NfseWebserverInterface
     public function localiza(Request $request, Companies $company): mixed
     {
         try {
+            $filter = $this->buildFilter($request);
+            if (! $request->filled('document')) {
+                $companyDocument = $this->normalizeDigits((string) ($company->cnpj ?? ''));
+                if ($companyDocument) {
+                    $ownerKey = $this->requestedRole($request) === 'taker' ? 'takerCnpj' : 'emitterCnpj';
+                    $filter[$ownerKey] = array_values(array_unique(array_filter([
+                        ...($filter[$ownerKey] ?? []),
+                        $companyDocument,
+                    ])));
+                    $filter['owners'] = array_values(array_unique(array_filter([
+                        ...($filter['owners'] ?? []),
+                        $companyDocument,
+                    ])));
+                }
+            }
+
             $payload = [
-                'filter' => $this->buildFilter($request),
+                'filter' => $filter,
                 'projection' => $this->buildProjection(),
             ];
 

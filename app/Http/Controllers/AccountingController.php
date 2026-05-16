@@ -23,14 +23,41 @@ use Inertia\Inertia;
 
 class AccountingController extends Controller
 {
+    private function resolveCompanyIdFromRequest(Request $request): ?string
+    {
+        $direct = $request->query('id') ?? $request->query('home') ?? $request->query('?home');
+        if (filled($direct)) {
+            return (string) $direct;
+        }
+
+        foreach ($request->query() as $key => $value) {
+            $normalizedKey = ltrim(urldecode((string) $key), '?');
+            if (in_array($normalizedKey, ['id', 'home'], true) && filled($value)) {
+                return (string) $value;
+            }
+        }
+
+        $uriQuery = parse_url($request->getRequestUri(), PHP_URL_QUERY) ?: '';
+        parse_str((string) $uriQuery, $rawQuery);
+        foreach ($rawQuery as $key => $value) {
+            $normalizedKey = ltrim(urldecode((string) $key), '?');
+            if (in_array($normalizedKey, ['id', 'home'], true) && filled($value)) {
+                return (string) $value;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        if ($request->query('home')) {
-            $company = Companies::where('user_id', $user->id)->findOrFail($request->query('home'));
+        $companyId = $this->resolveCompanyIdFromRequest($request);
+        if ($companyId) {
+            $company = Companies::where('user_id', $user->id)->findOrFail($companyId);
             $notas = Invoices::orderBy('created_at', 'desc')
                 ->get();
 

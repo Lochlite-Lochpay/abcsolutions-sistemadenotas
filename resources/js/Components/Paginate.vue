@@ -102,7 +102,7 @@ const getPageUrl = (page) => {
     {{ page }}
 </button>
 <button 
-    v-if="boxes.next_page_url" 
+    v-if="paginate.next_page_url" 
     @click="fetch(paginate.next_page_url)" 
     class="bg-gray-300 text-gray-700 px-4 py-2 ms-2 rounded hover:bg-gray-400"
 >

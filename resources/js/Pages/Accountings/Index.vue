@@ -37,7 +37,7 @@ const formsearch = useForm({
 
 const submit = () => {
   emit('toast', { type: 'connect', message: 'Iniciando conexão...' });
-  formsearch.get(route('dashboard.nfse.index', {home: props.company.id}), {
+  formsearch.get(route('dashboard.nfse.index', {id: props.company.id}), {
     onStart: () => {
       emit('toast', { type: 'connect', message: 'Buscando notas...' });
       console.log('Buscando notas...');
