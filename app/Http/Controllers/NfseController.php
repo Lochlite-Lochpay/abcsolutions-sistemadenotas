@@ -61,7 +61,6 @@ class NfseController extends Controller
             $nfseService = new NfseService($company, 'Qive');
             $nfseResult = $nfseService->localiza($request);
 
-            // dd($nfseResult);
             return Inertia::render('Nfse', array_merge([
                 'company' => $company,
             ], $nfseResult, $request->all()));

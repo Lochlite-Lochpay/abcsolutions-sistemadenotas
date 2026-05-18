@@ -876,11 +876,6 @@ const submitreceived = () => {
                         Nenhuma nota fiscal encontrada.
                       </p>
                     </div>
-                    <div v-else class="flex items-center p-4 mb-4 text-blue-800 border-t-4 border-blue-300 bg-blue-50 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-800" role="alert">
-                      <div class="ms-3 text-sm font-medium">
-                        Nenhuma nota encontrada para os filtros informados.
-                      </div>
-                    </div>
                   </template>
                   <template v-else>
                     <div
@@ -1276,11 +1271,6 @@ const submitreceived = () => {
                   </svg>
                   <div class="ms-3 text-sm font-medium">
                     {{ code + ': ' + message }}
-                  </div>
-                </div>
-                <div v-else class="flex items-center p-4 mb-4 text-blue-800 border-t-4 border-blue-300 bg-blue-50 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-800" role="alert">
-                  <div class="ms-3 text-sm font-medium">
-                    Nenhuma nota encontrada para os filtros informados.
                   </div>
                 </div>
               </template>

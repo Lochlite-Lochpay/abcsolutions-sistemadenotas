@@ -46,7 +46,7 @@ class Qive implements NfseWebserverInterface
     protected function buildFilter(Request $request): array
     {
         $filter = [
-            'ownerRoles' => $this->ownerRoles($request),
+            'ownerRoles' => [$this->ownerRoles($request)],
         ];
 
         $emissionDate = array_filter([
@@ -142,7 +142,17 @@ class Qive implements NfseWebserverInterface
 
         $decoded = base64_decode($xmlDocument, true);
 
-        return $decoded === false ? $xmlDocument : $decoded;
+        if (is_string($decoded) && str_contains($decoded, '<')) {
+            return $decoded;
+        }
+
+        $unzipped = is_string($decoded) ? @gzdecode($decoded) : false;
+
+        if (is_string($unzipped) && str_contains($unzipped, '<')) {
+            return $unzipped;
+        }
+
+        return $xmlDocument;
     }
 
     protected function normalizeTagName(string $tag): string
@@ -362,15 +372,18 @@ class Qive implements NfseWebserverInterface
         $xmlSource = data_get($nota, 'originalXml')
             ?: data_get($nota, 'xmlAbrasf')
             ?: data_get($nota, 'xmlAbrasfRtc')
+            ?: data_get($nota, 'xml')
             ?: data_get($nota, 'event.0.xml');
+        $xmlString = $this->extractXmlString($xmlSource);
 
-        $parsedXml = $this->normalizeXmlToArray($xmlSource)
+        $parsedXml = $this->normalizeXmlToArray($xmlString)
             ?? $this->normalizeXmlToArray(data_get($nota, 'jsonDocument'))
             ?? [];
 
         $parsedXml = $this->buildCanonicalNfseDocument($parsedXml);
 
-        $parsedXml['xml'] = $xmlSource ? base64_encode($xmlSource) : null;
+        $parsedXml['xml'] = $xmlString ? base64_encode($xmlString) : null;
+        $parsedXml['xmlBase64'] = $parsedXml['xml'];
         $parsedXml['__qive'] = [
             'id' => data_get($nota, 'id'),
             'origin' => data_get($nota, 'origin'),
@@ -385,10 +398,67 @@ class Qive implements NfseWebserverInterface
             'originalXml' => data_get($nota, 'originalXml'),
             'xmlAbrasf' => data_get($nota, 'xmlAbrasf'),
             'xmlAbrasfRtc' => data_get($nota, 'xmlAbrasfRtc'),
+            'xml' => data_get($nota, 'xml'),
             'jsonDocument' => data_get($nota, 'jsonDocument'),
         ];
 
         return $parsedXml;
+    }
+
+    protected function roleEndpoint(Request $request): string
+    {
+        $role = $this->requestedRole($request) === 'taker' ? 'received' : 'emitted';
+
+        return "https://api.arquivei.com.br/v1/nfse/{$role}";
+    }
+
+    protected function buildRoleQuery(Request $request, Companies $company): array
+    {
+        $query = array_filter([
+            'cnpj' => $this->normalizeDigits((string) ($company->cnpj ?? '')),
+            'id' => $request->get('nfse_numero'),
+            'limit' => 50,
+        ], static fn ($value) => filled($value));
+
+        if ($request->filled('data_emissao_inicial')) {
+            $query['created_at[from]'] = $request->get('data_emissao_inicial');
+        }
+
+        if ($request->filled('data_emissao_final')) {
+            $query['created_at[to]'] = $request->get('data_emissao_final');
+        }
+
+        return $query;
+    }
+
+    protected function fetchByRoleEndpoint(Request $request, Companies $company): array
+    {
+        $endpoint = $this->roleEndpoint($request);
+        $response = Http::acceptJson()
+            ->timeout(20)
+            ->withHeaders([
+                'X-API-ID' => $company->api_id,
+                'X-API-KEY' => $company->api_key,
+                'X-Use-ApiGateway' => 'always',
+            ])
+            ->get($endpoint, $this->buildRoleQuery($request, $company));
+
+        $resp = $response->json();
+        if (! is_array($resp)) {
+            $resp = json_decode($response->body(), true) ?? [];
+        }
+
+        if (! $response->successful()) {
+            throw new Exception(data_get($resp, 'status.message') ?? data_get($resp, 'error.message') ?? "Qive retornou HTTP {$response->status()}.");
+        }
+
+        $nfses = data_get($resp, 'data', data_get($resp, 'nfses', []));
+
+        return [
+            'endpoint' => $endpoint,
+            'response' => $resp,
+            'nfses' => is_array($nfses) ? $nfses : [],
+        ];
     }
 
     public function localiza(Request $request, Companies $company): mixed
@@ -411,8 +481,7 @@ class Qive implements NfseWebserverInterface
             }
 
             $payload = [
-                'filter' => $filter,
-                'projection' => $this->buildProjection(),
+                'filters' => $filter,
             ];
 
             if ($request->filled('nfse_numero')) {
@@ -431,6 +500,7 @@ class Qive implements NfseWebserverInterface
                 $payload['paginator'] = $paginator;
             }
 
+            $endpoint = self::ENDPOINT;
             $response = Http::withHeaders([
                 'X-API-ID' => $company->api_id,
                 'X-API-KEY' => $company->api_key,
@@ -444,11 +514,17 @@ class Qive implements NfseWebserverInterface
                 $resp = json_decode($response->body(), true) ?? [];
             }
 
-            if (! $response->successful() && empty(data_get($resp, 'nfses'))) {
-                throw new Exception(data_get($resp, 'status.message') ?? 'Nenhuma resposta válida foi retornada pela Qive.');
+            $statusCode = $response->status();
+            $nfses = data_get($resp, 'nfses', []);
+
+            if (! $response->successful() || empty($nfses)) {
+                $fallback = $this->fetchByRoleEndpoint($request, $company);
+                $endpoint = $fallback['endpoint'];
+                $resp = $fallback['response'];
+                $nfses = $fallback['nfses'];
+                $statusCode = 200;
             }
 
-            $nfses = data_get($resp, 'nfses', []);
             $notasArray = [];
             $accountingNotas = [];
 
@@ -456,27 +532,26 @@ class Qive implements NfseWebserverInterface
                 $normalized = $this->normalizeNota($nota);
                 $notasArray[] = $normalized;
 
-                $accountingNota = $this->normalizeXmlToArray(data_get($nota, 'jsonDocument'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'originalXml'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'xmlAbrasf'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'xmlAbrasfRtc'));
-
-                if ($accountingNota) {
-                    $accountingNotas[] = $accountingNota;
+                if (data_get($normalized, 'Nfse.InfNfse.Numero')) {
+                    $accountingNotas[] = $normalized;
                 }
             }
 
             if ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true') {
-                $accounting = new AccountingService($company, 'Nfse', 'Onvio');
-                $accounting->processInvoice($accountingNotas);
+                try {
+                    $accounting = new AccountingService($company, 'Nfse', 'Onvio');
+                    $accounting->processInvoice($accountingNotas);
+                } catch (Exception $e) {
+                    Log::error('Erro ao enviar NFS-e para contabilidade: '.$e->getMessage());
+                }
             }
 
             return [
-                'success' => (int) data_get($resp, 'status.code', $response->status()) === 200,
-                'code' => data_get($resp, 'status.code', $response->status()),
+                'success' => (int) data_get($resp, 'status.code', $statusCode) === 200,
+                'code' => data_get($resp, 'status.code', $statusCode),
                 'message' => data_get($resp, 'status.message') ?? $response->reason(),
-                'endpoint' => self::ENDPOINT,
-                'filter' => $payload['filter'],
+                'endpoint' => $endpoint,
+                'filter' => $payload['filters'],
                 'notas' => base64_encode(json_encode($nfses, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
                 'notasarray' => $notasArray,
                 'page' => [

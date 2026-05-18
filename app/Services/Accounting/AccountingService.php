@@ -63,22 +63,25 @@ class AccountingService
     {
 
         foreach ($invoices as $item) {
-            $number = $item['Nfse']['InfNfse']['Numero'];
+            $number = data_get($item, 'Nfse.InfNfse.Numero');
             if (empty($number)) {
                 // Se não houver número, ignora este item
+                Log::warning('Nota fiscal ignorada na contabilidade por falta de numero NFS-e.', [
+                    'company_id' => $this->company->id,
+                    'keys' => array_keys($item),
+                ]);
+
                 continue;
             }
 
             try {
                 // Adiciona campos de prestador e tomador
-                $serviceProvider = $item['Nfse']['InfNfse']['PrestadorServico']['RazaoSocial'] ?? null;
-                $serviceProviderDocument = $item['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['CpfCnpj']['Cnpj']
-                    ?? $item['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['CpfCnpj']['Cpf']
-                    ?? null;
-                $serviceTaker = $item['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['TomadorServico']['RazaoSocial'] ?? null;
-                $serviceTakerDocument = $item['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['TomadorServico']['IdentificacaoTomador']['CpfCnpj']['Cpf']
-                    ?? $item['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['TomadorServico']['IdentificacaoTomador']['CpfCnpj']['Cnpj']
-                    ?? null;
+                $serviceProvider = data_get($item, 'Nfse.InfNfse.PrestadorServico.RazaoSocial');
+                $serviceProviderDocument = data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.Prestador.CpfCnpj.Cnpj')
+                    ?? data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.Prestador.CpfCnpj.Cpf');
+                $serviceTaker = data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.TomadorServico.RazaoSocial');
+                $serviceTakerDocument = data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.TomadorServico.IdentificacaoTomador.CpfCnpj.Cpf')
+                    ?? data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.TomadorServico.IdentificacaoTomador.CpfCnpj.Cnpj');
             } catch (\Exception $e) {
                 // Tratar exceções
                 // dd($e);
@@ -89,6 +92,16 @@ class AccountingService
                 $invoice = Invoices::where('number', $number)->first();
                 if ($invoice->accountings == false || $invoice->accountings == 0) {
                     $conv = $this->convert($item);
+                    if (! filled($conv['xml'] ?? null)) {
+                        Log::warning('Nota fiscal nao enviada para contabilidade porque o XML convertido nao foi gerado.', [
+                            'company_id' => $this->company->id,
+                            'invoice_number' => $number,
+                            'conversion_message' => $conv['message'] ?? null,
+                        ]);
+
+                        continue;
+                    }
+
                     $this->webserver->send(Invoices::where('number', $number)->first(), $conv['xml']);
                 }
 
@@ -107,6 +120,16 @@ class AccountingService
                     'accountings' => false,
                 ]);
                 $conv = $this->convert($item);
+                if (! filled($conv['xml'] ?? null)) {
+                    Log::warning('Nota fiscal criada sem envio para contabilidade porque o XML convertido nao foi gerado.', [
+                        'company_id' => $this->company->id,
+                        'invoice_number' => $number,
+                        'conversion_message' => $conv['message'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
                 $this->webserver->send($invoice, $conv['xml']);
             }
         }
