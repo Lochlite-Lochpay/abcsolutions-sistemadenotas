@@ -11,7 +11,7 @@ ___
 
 Long live Lochlite! ******/
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Link, usePage, useForm } from '@inertiajs/vue3';
 
 const dispatch = defineEmits(['toast']);
@@ -45,6 +45,7 @@ const props = defineProps({
     intermediario_cnpj: String,
     intermediario_cpf: String,
     intermediario_im: String,
+    document: String,
     nfse_numero: String,
 });
 
@@ -167,6 +168,34 @@ const noteXmlHref = (nota) => {
   const xml = nota?.xmlBase64 || nota?.xml || null;
   return xml ? `data:text/xml;base64,${xml}` : null;
 };
+
+const downloadQuery = computed(() => {
+  const query = {
+    id: props.company.id,
+    webserver: props.webserver || 'prestadas',
+    nfse_numero: props.nfse_numero || '',
+    nfse_numero_inicial: props.nfse_numero_inicial || '',
+    nfse_numero_final: props.nfse_numero_final || '',
+    rps_numero: props.rps_numero || '',
+    rps_serie: props.rps_serie || '',
+    rps_tipo: props.rps_tipo || '',
+    data_emissao_inicial: props.data_emissao_inicial || '',
+    data_emissao_final: props.data_emissao_final || '',
+    data_competencia_inicial: props.data_competencia_inicial || '',
+    data_competencia_final: props.data_competencia_final || '',
+    tomador_cnpj: props.tomador_cnpj || '',
+    tomador_cpf: props.tomador_cpf || '',
+    tomador_im: props.tomador_im || '',
+    intermediario_cnpj: props.intermediario_cnpj || '',
+    intermediario_cpf: props.intermediario_cpf || '',
+    intermediario_im: props.intermediario_im || '',
+    document: props.document || '',
+  };
+
+  return Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined),
+  );
+});
 
 const noteJsonPretty = (nota) => safeJson(noteJson(nota));
 
@@ -571,11 +600,11 @@ const submitreceived = () => {
                     </h2>
 
                     <a
-                      :href="'data:application/json;base64,' + notas"
+                      :href="route('dashboard.nfse.download', downloadQuery)"
                       class="font-bold shadow-sm rounded-lg py-1.5 px-3 bg-orange-600 text-white flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none hover:shadow focus:shadow-sm focus:shadow-outline"
-                      download="notas-qive.json"
+                      download
                     >
-                      Baixar o retorno JSON
+                      Baixar XML/ZIP
                     </a>
                   </div>
                   <template v-if="success">
@@ -597,7 +626,7 @@ const submitreceived = () => {
                             </tr>
                           </thead>
                           <tbody
-                            id="accordion-collapse"
+                            id="nfse-prestadas-accordion"
                             data-accordion="collapse"
                           >
                             <template v-for="(nota, i) in notasarray" :key="i">
@@ -624,9 +653,10 @@ const submitreceived = () => {
                                   <button
                                     type="button"
                                     class="flex items-center justify-center items-center text-center w-full font-bold rtl:text-right text-gray-500 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 gap-3"
-                                    :data-accordion-target="'#accordion-collapse-body-' + i"
+                                    :id="'nfse-prestadas-heading-' + i"
+                                    :data-accordion-target="'#nfse-prestadas-body-' + i"
                                     aria-expanded="false"
-                                    :aria-controls="'#accordion-collapse-body-' + i"
+                                    :aria-controls="'nfse-prestadas-body-' + i"
                                   >
                                     <svg
                                       data-accordion-icon
@@ -648,9 +678,9 @@ const submitreceived = () => {
                                 </td>
                               </tr>
                               <tr
-                                :id="'accordion-collapse-body-' + i"
+                                :id="'nfse-prestadas-body-' + i"
                                 class="hidden"
-                                :aria-labelledby="'accordion-collapse-heading-' + i"
+                                :aria-labelledby="'nfse-prestadas-heading-' + i"
                               >
                                 <td colspan="8">
                                   <div class="py-2">
@@ -665,7 +695,7 @@ const submitreceived = () => {
                                         <strong>Serviço:</strong>
                                         {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.CodigoTributacaoMunicipio }}
                                         -
-                                        {{ nota?.Nfse?.InfNfse?.DescricaoCodigoTributacaoMunicípio }}
+                                        {{ nota?.Nfse?.InfNfse?.DescricaoCodigoTributacaoMunicipio }}
                                       </div>
                                       <div>
                                         <strong>Código de Verificação:</strong>
@@ -722,26 +752,19 @@ const submitreceived = () => {
                                           <strong>Nome Fantasia:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.NomeFantasia }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco || nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro || nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep">
                                           <strong>Endereço:</strong>
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco
-                                          }},
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Numero }}
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Complemento }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf }}
-                                          - CEP:
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep }}
+                                          {{ [nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco, nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Numero, nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Complemento].filter(Boolean).join(', ') }}
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep"> - CEP: {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep }}</span>
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Telefone">
                                           <strong>Telefone:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Telefone }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Email">
                                           <strong>Email:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Email }}
                                         </div>
@@ -758,22 +781,15 @@ const submitreceived = () => {
                                           <strong>CPF/CNPJ:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.IdentificacaoTomador?.CpfCnpj?.Cpf || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.IdentificacaoTomador?.CpfCnpj?.Cnpj }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Endereco || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Bairro || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Cep">
                                           <strong>Endereço:</strong>
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Endereco
-                                          }},
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Numero }}
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Complemento }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Bairro }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.CodigoMunicipio }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Uf }}
-                                          - CEP:
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Cep }}
+                                          {{ [nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Endereco, nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Numero, nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Complemento].filter(Boolean).join(', ') }}
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Bairro"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Bairro }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.CodigoMunicipio"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.CodigoMunicipio }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Uf"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Uf }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Cep"> - CEP: {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Endereco?.Cep }}</span>
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Contato?.Email">
                                           <strong>Email:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.TomadorServico?.Contato?.Email }}
                                         </div>
@@ -787,7 +803,7 @@ const submitreceived = () => {
                                           R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorServicos }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorDeducoes">
                                           <strong>Valor das Deduções:</strong>
                                           R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorDeducoes }}
@@ -800,11 +816,11 @@ const submitreceived = () => {
                                           <strong>Valor da COFINS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorCofins }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorInss">
                                           <strong>Valor do INSS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorInss }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIr">
                                           <strong>Valor do IR:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIr }}
                                         </div>
@@ -812,15 +828,15 @@ const submitreceived = () => {
                                           <strong>Valor do CSLL:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorCsll }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.OutrasRetencoes">
                                           <strong>Outras Retenções:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.OutrasRetencoes }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIss">
                                           <strong>Valor do ISS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIss }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.Aliquota">
                                           <strong>Alíquota:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.Aliquota }}
                                         </div>
@@ -974,7 +990,7 @@ const submitreceived = () => {
                             </tr>
                           </thead>
                           <tbody
-                            id="accordion-collapse"
+                            id="nfse-tomadas-accordion"
                             data-accordion="collapse"
                           >
                             <template v-for="(nota, i) in notasarray" :key="i">
@@ -1004,9 +1020,10 @@ const submitreceived = () => {
                                   <button
                                     type="button"
                                     class="flex items-center justify-center items-center text-center w-full font-bold rtl:text-right text-gray-500 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 gap-3"
-                                    :data-accordion-target="'#accordion-collapse-body-prestadas-' + i"
+                                    :id="'nfse-tomadas-heading-' + i"
+                                    :data-accordion-target="'#nfse-tomadas-body-' + i"
                                     aria-expanded="false"
-                                    :aria-controls="'#accordion-collapse-body-prestadas-' + i"
+                                    :aria-controls="'nfse-tomadas-body-' + i"
                                   >
                                     <svg
                                       data-accordion-icon
@@ -1028,9 +1045,9 @@ const submitreceived = () => {
                                 </td>
                               </tr>
                               <tr
-                                :id="'accordion-collapse-body-prestadas-' + i"
+                                :id="'nfse-tomadas-body-' + i"
                                 class="hidden"
-                                :aria-labelledby="'accordion-collapse-heading-prestadas-' + i"
+                                :aria-labelledby="'nfse-tomadas-heading-' + i"
                               >
                                 <td colspan="8">
                                   <div class="py-2">
@@ -1045,7 +1062,7 @@ const submitreceived = () => {
                                         <strong>Serviço:</strong>
                                         {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.CodigoTributacaoMunicipio }}
                                         -
-                                        {{ nota?.Nfse?.InfNfse?.DescricaoCodigoTributacaoMunicípio }}
+                                        {{ nota?.Nfse?.InfNfse?.DescricaoCodigoTributacaoMunicipio }}
                                       </div>
                                       <div>
                                         <strong>Código de Verificação:</strong>
@@ -1102,26 +1119,19 @@ const submitreceived = () => {
                                           <strong>Nome Fantasia:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.NomeFantasia }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco || nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro || nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep">
                                           <strong>Endereço:</strong>
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco
-                                          }},
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Numero }}
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Complemento }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf }}
-                                          - CEP:
-                                          {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep }}
+                                          {{ [nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Endereco, nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Numero, nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Complemento].filter(Boolean).join(', ') }}
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Bairro }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.CodigoMunicipio }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf"> - {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Uf }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep"> - CEP: {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Endereco?.Cep }}</span>
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Telefone">
                                           <strong>Telefone:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Telefone }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Email">
                                           <strong>Email:</strong>
                                           {{ nota?.Nfse?.InfNfse?.PrestadorServico?.Contato?.Email }}
                                         </div>
@@ -1138,22 +1148,15 @@ const submitreceived = () => {
                                           <strong>CPF/CNPJ:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.IdentificacaoTomador?.CpfCnpj?.Cpf || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.IdentificacaoTomador?.CpfCnpj?.Cnpj }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Endereco || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Bairro || nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Cep">
                                           <strong>Endereço:</strong>
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Endereco
-                                          }},
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Numero }}
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Complemento }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Bairro }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.CodigoMunicipio }}
-                                          -
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Uf }}
-                                          - CEP:
-                                          {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Cep }}
+                                          {{ [nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Endereco, nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Numero, nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Complemento].filter(Boolean).join(', ') }}
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Bairro"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Bairro }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.CodigoMunicipio"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.CodigoMunicipio }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Uf"> - {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Uf }}</span>
+                                          <span v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Cep"> - CEP: {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Endereco?.Cep }}</span>
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Contato?.Email">
                                           <strong>Email:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Tomador?.Contato?.Email }}
                                         </div>
@@ -1167,7 +1170,7 @@ const submitreceived = () => {
                                           R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorServicos }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorDeducoes">
                                           <strong>Valor das Deduções:</strong>
                                           R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorDeducoes }}
@@ -1180,11 +1183,11 @@ const submitreceived = () => {
                                           <strong>Valor da COFINS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorCofins }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorInss">
                                           <strong>Valor do INSS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorInss }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIr">
                                           <strong>Valor do IR:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIr }}
                                         </div>
@@ -1192,15 +1195,15 @@ const submitreceived = () => {
                                           <strong>Valor do CSLL:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorCsll }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.OutrasRetencoes">
                                           <strong>Outras Retenções:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.OutrasRetencoes }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIss">
                                           <strong>Valor do ISS:</strong> R$
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.ValorIss }}
                                         </div>
-                                        <div>
+                                        <div v-if="nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.Aliquota">
                                           <strong>Alíquota:</strong>
                                           {{ nota?.Nfse?.InfNfse?.DeclaracaoPrestacaoServico?.InfDeclaracaoPrestacaoServico?.Servico?.Valores?.Aliquota }}
                                         </div>

@@ -19,6 +19,7 @@ use App\Services\Nfse\NfseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use ZipArchive;
 
 class NfseController extends Controller
 {
@@ -69,6 +70,110 @@ class NfseController extends Controller
                 'companies' => Companies::where('user_id', $user->id)->paginate(),
             ]);
         }
+    }
+
+    private function decodeXmlContent(?string $xml): ?string
+    {
+        if (! filled($xml)) {
+            return null;
+        }
+
+        $xml = preg_replace('/^data:[^,]+,/', '', $xml);
+        $decoded = base64_decode((string) $xml, true);
+
+        if ($decoded !== false && filled($decoded)) {
+            return $decoded;
+        }
+
+        return $xml;
+    }
+
+    private function sanitizeDownloadName(string $name): string
+    {
+        $sanitized = preg_replace('/[^A-Za-z0-9._-]+/', '_', $name);
+
+        return trim((string) $sanitized, '_') ?: 'nfse';
+    }
+
+    private function extractDownloadFiles(array $notasarray): array
+    {
+        $files = [];
+
+        foreach ($notasarray as $index => $nota) {
+            $xml = data_get($nota, 'xmlBase64') ?: data_get($nota, 'xml');
+            $xmlContent = $this->decodeXmlContent(is_string($xml) ? $xml : null);
+
+            if (! filled($xmlContent)) {
+                continue;
+            }
+
+            $numero = data_get($nota, 'Nfse.InfNfse.Numero')
+                ?: data_get($nota, 'numero')
+                ?: data_get($nota, '__qive.id')
+                ?: data_get($nota, '__qive.queryIdentifier')
+                ?: (string) ($index + 1);
+
+            $files[] = [
+                'name' => $this->sanitizeDownloadName('nfse_'.$numero).'.xml',
+                'content' => $xmlContent,
+            ];
+        }
+
+        return $files;
+    }
+
+    private function createZipFile(array $files): string
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'nfse_zip_');
+        if ($zipPath === false) {
+            throw new \RuntimeException('Não foi possível criar o arquivo temporário do ZIP.');
+        }
+
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Não foi possível gerar o ZIP das notas.');
+        }
+
+        foreach ($files as $file) {
+            $zip->addFromString($file['name'], $file['content']);
+        }
+
+        $zip->close();
+
+        return $zipPath;
+    }
+
+    public function download(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = $this->resolveCompanyIdFromRequest($request);
+
+        abort_unless($companyId, 404);
+
+        $company = Companies::where('user_id', $user->id)->findOrFail($companyId);
+        $nfseService = new NfseService($company, 'Qive');
+        $nfseResult = $nfseService->localiza($request, false);
+        $notasarray = is_array(data_get($nfseResult, 'notasarray')) ? data_get($nfseResult, 'notasarray') : [];
+        $files = $this->extractDownloadFiles($notasarray);
+
+        abort_unless(count($files) > 0, 404, 'Nenhuma XML foi encontrada para download.');
+
+        if (count($files) === 1) {
+            $file = $files[0];
+
+            return response()->streamDownload(function () use ($file): void {
+                echo $file['content'];
+            }, $file['name'], [
+                'Content-Type' => 'application/xml; charset=UTF-8',
+            ]);
+        }
+
+        $zipPath = $this->createZipFile($files);
+        $downloadName = $this->sanitizeDownloadName('nfse_'.$company->id.'_'.now()->format('Ymd_His')).'.zip';
+
+        return response()->download($zipPath, $downloadName, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
     /**

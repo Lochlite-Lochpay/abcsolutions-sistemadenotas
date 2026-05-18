@@ -19,5 +19,5 @@ use Illuminate\Http\Request;
 
 interface NfseWebserverInterface
 {
-    public function localiza(Request $request, Companies $company): mixed;
+    public function localiza(Request $request, Companies $company, bool $processAccounting = true): mixed;
 }

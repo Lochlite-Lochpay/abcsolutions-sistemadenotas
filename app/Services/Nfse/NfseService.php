@@ -48,9 +48,9 @@ class NfseService
         };
     }
 
-    public function localiza($request)
+    public function localiza($request, bool $processAccounting = true)
     {
-        return $this->webserver->localiza($request, $this->company);
+        return $this->webserver->localiza($request, $this->company, $processAccounting);
     }
 
     public function convert($xmlstring)

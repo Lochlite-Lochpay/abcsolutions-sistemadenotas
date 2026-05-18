@@ -84,7 +84,6 @@ class AccountingService
                     ?? data_get($item, 'Nfse.InfNfse.DeclaracaoPrestacaoServico.InfDeclaracaoPrestacaoServico.TomadorServico.IdentificacaoTomador.CpfCnpj.Cnpj');
             } catch (\Exception $e) {
                 // Tratar exceções
-                // dd($e);
                 Log::error("Erro ao processar nota fiscal: {$e->getMessage()}");
             }
 
