@@ -60,8 +60,19 @@ class NfseInvoice implements AccountingOnvioInterface
             }
             $accessToken = $company->access_token_accountings;
             $apiIntegrationKey = $company->api_generate_integration_id_accountings;
-            // Remove espaços, aspas e outros caracteres indesejaveis decorrentes do armazenamento do xml como string
-            $code = html_entity_decode(preg_replace('/[^\x20-\x7E]/', '', trim($xml, "\"'")));
+            // Garantir que o XML está em UTF-8 limpo, sem BOM e sem caracteres de controle.
+            // Nunca usar preg_replace com [^\x20-\x7E]: isso remove acentos e caracteres UTF-8 multibyte.
+            $code = trim($xml, "\"'");
+            // Remover BOM UTF-8 se presente
+            if (str_starts_with($code, "\xEF\xBB\xBF")) {
+                $code = substr($code, 3);
+            }
+            // Garantir encoding UTF-8 válido; converter se necessário
+            if (!mb_check_encoding($code, 'UTF-8')) {
+                $code = mb_convert_encoding($code, 'UTF-8', 'ISO-8859-1');
+            }
+            // Remover apenas caracteres de controle reais (exceto tab, LF, CR que são válidos em XML)
+            $code = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $code);
 
             // Salva o arquivo xml
             $fileName = 'nfse_'.$invoice->number.'.xml'; // Nome do arquivo com prefixo nfse_ seguido do número da nota

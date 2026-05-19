@@ -26,7 +26,7 @@ const props = defineProps({
   numero: String,
   tomador: String,
   prestador: String,
-  notas: String,
+  notas: Object,
 });
 
 const formsearch = useForm({
@@ -54,7 +54,7 @@ const submit = () => {
       console.log('Operação concluida');
     },
   });
-  }
+};
 </script>
 
 <template>
@@ -62,7 +62,7 @@ const submit = () => {
   <div class="w-full">
     <div class="w-full max-w-screen mx-auto">
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-      <template v-if="notas?.length">
+      <template v-if="notas?.data?.length">
       <div class="overflow-x-auto">
         <table class="min-w-full table-auto border-separate border-spacing-0.5 bg-white">
         <thead>
@@ -79,7 +79,7 @@ const submit = () => {
           </tr>
         </thead>
         <tbody id="accordion-collapse" data-accordion="collapse">
-          <template v-for="(nota, i) in notas" :key="i">
+          <template v-for="(nota, i) in notas.data" :key="i">
           <tr class="odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800 border-b dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
             <td class="px-4 py-2 text-sm text-gray-700">
             {{ nota?.number }}
@@ -132,6 +132,33 @@ const submit = () => {
         </tbody>
         </table>
       </div>
+
+      <!-- Paginação -->
+      <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 bg-white">
+        <div class="text-sm text-gray-600">
+          Exibindo {{ notas.from }}–{{ notas.to }} de {{ notas.total }} notas
+        </div>
+        <div class="flex items-center gap-1">
+          <template v-for="link in notas.links" :key="link.label">
+            <Link
+              v-if="link.url"
+              :href="link.url"
+              preserve-scroll
+              class="px-3 py-1.5 rounded text-sm border"
+              :class="link.active
+                ? 'bg-blue-600 text-white border-blue-600 font-semibold'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+              v-html="link.label"
+            />
+            <span
+              v-else
+              class="px-3 py-1.5 rounded text-sm border border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50"
+              v-html="link.label"
+            />
+          </template>
+        </div>
+      </div>
+
       </template>
       <template v-else>
       <div>

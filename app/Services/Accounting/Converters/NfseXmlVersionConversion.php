@@ -20,11 +20,31 @@ class NfseXmlVersionConversion
 {
     public function convert(array $notasArray): mixed
     {
-        try {// dd($notasArray);
+        try {
+            // If the original XML string is available (Qive path), use it directly.
+            // It is already a valid ABRASF CompNfse document — no conversion needed.
+            $xmlBase64 = $notasArray['xmlBase64'] ?? $notasArray['xml'] ?? null;
+            if ($xmlBase64) {
+                $originalXml = base64_decode($xmlBase64);
+                if ($originalXml && str_contains($originalXml, '<CompNfse')) {
+                    return [
+                        'success' => true,
+                        'xml'     => $originalXml,
+                    ];
+                }
+            }
+
+            // Fallback: rebuild XML from the parsed array (IntegraNotas path).
+            // The municipality already sends ABRASF-compliant XML, so we mirror
+            // the original structure as closely as possible.
+            $versao = $notasArray['Nfse']['@attributes']['versao']
+                ?? $notasArray['Nfse']['versao']
+                ?? '2.02';
+
             $novaXml = new \SimpleXMLElement('<CompNfse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd" />');
             if (true) {
                 $nfse = $novaXml->addChild('Nfse');
-                $nfse->addAttribute('versao', '1.00');
+                $nfse->addAttribute('versao', $versao);
 
                 $infNfse = $nfse->addChild('InfNfse');
                 $infNfse->addChild('Numero', $notasArray['Nfse']['InfNfse']['Numero'] ?? '');
@@ -86,9 +106,12 @@ class NfseXmlVersionConversion
                         $valores->addChild('Aliquota', $servicoArr['Valores']['Aliquota'] ?? '');
                         $servico->addChild('IssRetido', $servicoArr['IssRetido'] ?? '');
                         $servico->addChild('ItemListaServico', $servicoArr['ItemListaServico'] ?? '');
+                        if (!empty($servicoArr['CodigoTributacaoMunicipio'])) {
+                            $servico->addChild('CodigoTributacaoMunicipio', $servicoArr['CodigoTributacaoMunicipio']);
+                        }
                         $servico->addChild('Discriminacao', $servicoArr['Discriminacao'] ?? '');
                         $servico->addChild('CodigoMunicipio', $servicoArr['CodigoMunicipio'] ?? '');
-                        $servico->addChild('CodigoPais', @$servicoArr['CodigoPais'] ?? 'BR');
+                        $servico->addChild('CodigoPais', $servicoArr['CodigoPais'] ?? '1058');
                         $servico->addChild('ExigibilidadeISS', $servicoArr['ExigibilidadeISS'] ?? '');
                         $servico->addChild('MunicipioIncidencia', $servicoArr['MunicipioIncidencia'] ?? '');
                     }
@@ -108,9 +131,12 @@ class NfseXmlVersionConversion
                     $valores->addChild('Aliquota', $servicoArr['Valores']['Aliquota'] ?? '');
                     $servico->addChild('IssRetido', $servicoArr['IssRetido'] ?? '');
                     $servico->addChild('ItemListaServico', $servicoArr['ItemListaServico'] ?? '');
+                    if (!empty($servicoArr['CodigoTributacaoMunicipio'])) {
+                        $servico->addChild('CodigoTributacaoMunicipio', $servicoArr['CodigoTributacaoMunicipio']);
+                    }
                     $servico->addChild('Discriminacao', $servicoArr['Discriminacao'] ?? '');
                     $servico->addChild('CodigoMunicipio', $servicoArr['CodigoMunicipio'] ?? '');
-                    $servico->addChild('CodigoPais', $servicoArr['CodigoPais'] ?? 'BR');
+                    $servico->addChild('CodigoPais', $servicoArr['CodigoPais'] ?? '1058');
                     $servico->addChild('ExigibilidadeISS', $servicoArr['ExigibilidadeISS'] ?? '');
                     $servico->addChild('MunicipioIncidencia', $servicoArr['MunicipioIncidencia'] ?? '');
                 }
@@ -141,6 +167,9 @@ class NfseXmlVersionConversion
 
                 $infDps->addChild('OptanteSimplesNacional', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['OptanteSimplesNacional'] ?? '');
                 $infDps->addChild('IncentivoFiscal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['IncentivoFiscal'] ?? '');
+                if (isset($notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['RegimeEspecialTributacao'])) {
+                    $infDps->addChild('RegimeEspecialTributacao', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['RegimeEspecialTributacao']);
+                }
 
                 return [
                     'success' => true,

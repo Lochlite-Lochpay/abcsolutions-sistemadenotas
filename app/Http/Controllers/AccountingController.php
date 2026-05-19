@@ -58,8 +58,10 @@ class AccountingController extends Controller
         $companyId = $this->resolveCompanyIdFromRequest($request);
         if ($companyId) {
             $company = Companies::where('user_id', $user->id)->findOrFail($companyId);
-            $notas = Invoices::orderBy('created_at', 'desc')
-                ->get();
+            $notas = Invoices::where('company_id', $company->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(20)
+                ->withQueryString();
 
             return Inertia::render('Accountings/Index', [
                 'company' => $company,
