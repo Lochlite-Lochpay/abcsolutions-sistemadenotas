@@ -60,6 +60,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
+    Route::get('nfse/download', [App\Http\Controllers\NfseController::class, 'download'])->name('nfse.download');
     Route::resource('nfse', App\Http\Controllers\NfseController::class)->names('nfse');
     Route::resource('accounting', App\Http\Controllers\AccountingController::class)->names('accounting');
     Route::get('accounting/checksend/{company}/{invoice}/{id}', [App\Http\Controllers\AccountingController::class, 'checkSend'])->name('accounting.checkSend');

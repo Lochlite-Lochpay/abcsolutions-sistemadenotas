@@ -46,7 +46,7 @@ class Qive implements NfseWebserverInterface
     protected function buildFilter(Request $request): array
     {
         $filter = [
-            'ownerRoles' => $this->ownerRoles($request),
+            'ownerRoles' => [$this->ownerRoles($request)],
         ];
 
         $emissionDate = array_filter([
@@ -142,7 +142,17 @@ class Qive implements NfseWebserverInterface
 
         $decoded = base64_decode($xmlDocument, true);
 
-        return $decoded === false ? $xmlDocument : $decoded;
+        if (is_string($decoded) && str_contains($decoded, '<')) {
+            return $decoded;
+        }
+
+        $unzipped = is_string($decoded) ? @gzdecode($decoded) : false;
+
+        if (is_string($unzipped) && str_contains($unzipped, '<')) {
+            return $unzipped;
+        }
+
+        return $xmlDocument;
     }
 
     protected function normalizeTagName(string $tag): string
@@ -173,6 +183,58 @@ class Qive implements NfseWebserverInterface
         }
 
         return $normalized;
+    }
+
+    protected function mapEnderecoNode(mixed $node): array
+    {
+        if (! is_array($node)) {
+            return [];
+        }
+
+        return array_filter([
+            'Endereco' => $this->findValueByAliases($node, ['endereco', 'logradouro', 'street']),
+            'Numero' => $this->findValueByAliases($node, ['numero', 'number']),
+            'Complemento' => $this->findValueByAliases($node, ['complemento', 'complement']),
+            'Bairro' => $this->findValueByAliases($node, ['bairro', 'district']),
+            'CodigoMunicipio' => $this->findValueByAliases($node, ['codigomunicipio', 'municipiocodigo', 'citycode']),
+            'Uf' => $this->findValueByAliases($node, ['uf', 'estado', 'state']),
+            'Cep' => $this->findValueByAliases($node, ['cep', 'zipcode']),
+            'CodigoPais' => $this->findValueByAliases($node, ['codigopais', 'paiscodigo']),
+        ], static fn ($value) => filled($value));
+    }
+
+    protected function mapContatoNode(mixed $node): array
+    {
+        if (! is_array($node)) {
+            return [];
+        }
+
+        return array_filter([
+            'Telefone' => $this->findValueByAliases($node, ['telefone', 'phone']),
+            'Email' => $this->findValueByAliases($node, ['email', 'e-mail', 'mail']),
+        ], static fn ($value) => filled($value));
+    }
+
+    protected function mapValoresNode(mixed $node): array
+    {
+        if (! is_array($node)) {
+            return [];
+        }
+
+        return array_filter([
+            'BaseCalculo' => $this->findValueByAliases($node, ['basecalculo', 'taxbase', 'calculationbase']),
+            'ValorDeducoes' => $this->findValueByAliases($node, ['valordeducoes', 'deductions', 'deductionvalue']),
+            'ValorPis' => $this->findValueByAliases($node, ['valorpis', 'pis']),
+            'ValorCofins' => $this->findValueByAliases($node, ['valorcofins', 'cofins']),
+            'ValorInss' => $this->findValueByAliases($node, ['valorinss', 'inss']),
+            'ValorIr' => $this->findValueByAliases($node, ['valorir', 'ir']),
+            'ValorCsll' => $this->findValueByAliases($node, ['valorcsll', 'csll']),
+            'OutrasRetencoes' => $this->findValueByAliases($node, ['outrasretencoes', 'otherwithholdings']),
+            'ValorIss' => $this->findValueByAliases($node, ['valoriss', 'iss']),
+            'Aliquota' => $this->findValueByAliases($node, ['aliquota', 'rate']),
+            'ValorLiquidoNfse' => $this->findValueByAliases($node, ['valorliquidonfse', 'totalliquid', 'liquidvalue', 'valornfse', 'total']),
+            'ValorServicos' => $this->findValueByAliases($node, ['valorservicos', 'servicevalue', 'total']),
+        ], static fn ($value) => filled($value));
     }
 
     protected function findNodeByAliases(mixed $tree, array $aliases): mixed
@@ -262,32 +324,85 @@ class Qive implements NfseWebserverInterface
             $inf = $root;
         }
 
+        // OrgaoGerador: read directly from the parsed XML node.
+        // The real XMLs only carry CodigoMunicipio inside OrgaoGerador; Uf lives in PrestadorServico>Endereco.
+        $orgaoGeradorNode = $this->findNodeByAliases($inf, ['orgaogerador']) ?? [];
+        $orgaoGeradorCodigoMunicipio = $this->findValueByAliases($orgaoGeradorNode, ['codigomunicipio'])
+            ?? $this->findValueByAliases($inf, ['codigomunicipio']);
+        // Uf is not present in OrgaoGerador in practice; fall back to PrestadorServico>Endereco>Uf.
+        $orgaoGeradorUf = $this->findValueByAliases($orgaoGeradorNode, ['uf'])
+            ?? $this->findValueByAliases(
+                $this->findNodeByAliases($this->findNodeByAliases($root, ['prestadorservico', 'prestador', 'emitente', 'emitter']) ?? [], ['endereco', 'address']) ?? [],
+                ['uf', 'estado', 'state']
+            );
+
         $prestador = $this->findNodeByAliases($root, ['prestadorservico', 'prestador', 'emitente', 'emitter']) ?? [];
         $taker = $this->findNodeByAliases($root, ['tomadorservico', 'tomador', 'taker', 'recebedor', 'receiver']) ?? [];
         $servico = $this->findNodeByAliases($inf, ['servico', 'service']) ?? [];
-        $valores = $this->findNodeByAliases($inf, ['valoresnfse', 'valores', 'valor']) ?? [];
+
+        // ValoresNfse lives at InfNfse level; Servico>Valores lives inside the Servico node.
+        // Both need to be consulted: ValoresNfse typically carries ValorLiquidoNfse/BaseCalculo/Aliquota/ValorIss,
+        // while Servico>Valores carries ValorServicos, ValorCofins, ValorPis, ValorCsll, ValorDeducoes, etc.
+        // We keep them separate so each can be queried from its canonical source.
+        $valoresNfse = $this->findNodeByAliases($inf, ['valoresnfse']) ?? [];
+        $servicoValoresNode = $this->findNodeByAliases($servico, ['valores', 'valor']) ?? [];
+        // Unified fallback: if a field is absent in one, try the other.
+        $valores = array_merge(
+            is_array($servicoValoresNode) ? $servicoValoresNode : [],
+            is_array($valoresNfse) ? $valoresNfse : [],
+        );
 
         $numero = $this->findValueByAliases($inf, ['numero', 'numeronfse', 'nfsenumero', 'nfse', 'id']);
         $dataEmissao = $this->findValueByAliases($inf, ['dataemissao', 'emissao', 'emissiondate', 'createdat']);
         $codigoVerificacao = $this->findValueByAliases($inf, ['codigoverificacao', 'verificationcode', 'codigoverif']);
+        $competencia = $this->findValueByAliases($inf, ['competencia', 'periodo']);
+        $regimeEspecialTributacao = $this->findValueByAliases($inf, ['regimeespecialtributacao', 'regime']);
         $descricaoServico = $this->findValueByAliases($servico, ['discriminacao', 'descricao', 'description']);
         $codigoTributacao = $this->findValueByAliases($servico, ['codigotributacaomunicipio', 'codigotributacao', 'tributationcode']);
         $exigibilidadeIss = $this->findValueByAliases($servico, ['exigibilidadeiss', 'issexigivel']);
         $outros = $this->findValueByAliases($inf, ['outrasinformacoes', 'observacoes', 'notes']);
         $valorCredito = $this->findValueByAliases($inf, ['valorcredito', 'creditvalue']);
-        $baseCalculo = $this->findValueByAliases($valores, ['basecalculo', 'taxbase', 'calculationbase']);
-        $valorLiquido = $this->findValueByAliases($valores, ['valorliquidonfse', 'valorservicos', 'totalliquid', 'liquidvalue', 'valornfse', 'total']);
-        $valorServicos = $this->findValueByAliases($valores, ['valorservicos', 'servicevalue', 'total']);
+        // BaseCalculo may appear in ValoresNfse or Servico>Valores depending on the municipality's layout.
+        $baseCalculo = $this->findValueByAliases($valoresNfse, ['basecalculo', 'taxbase', 'calculationbase'])
+            ?? $this->findValueByAliases($servicoValoresNode, ['basecalculo', 'taxbase', 'calculationbase']);
+        // ValorLiquidoNfse is authoritative from ValoresNfse; fallback to merged $valores.
+        $valorLiquido = $this->findValueByAliases($valoresNfse, ['valorliquidonfse', 'totalliquid', 'liquidvalue', 'valornfse'])
+            ?? $this->findValueByAliases($valores, ['valorliquidonfse', 'totalliquid', 'liquidvalue', 'valornfse', 'valorservicos', 'total']);
+        // ValorServicos is canonical in Servico>Valores; fallback to ValoresNfse.
+        $valorServicos = $this->findValueByAliases($servicoValoresNode, ['valorservicos', 'servicevalue', 'total'])
+            ?? $this->findValueByAliases($valoresNfse, ['valorservicos', 'servicevalue', 'total']);
 
         $prestadorRazao = $this->findValueByAliases($prestador, ['razaosocial', 'nomefantasia', 'name', 'companyname']);
         $prestadorFantasia = $this->findValueByAliases($prestador, ['nomefantasia', 'tradingname']);
-        $prestadorEndereco = $this->findNodeByAliases($prestador, ['endereco', 'address']) ?? [];
-        $prestadorContato = $this->findNodeByAliases($prestador, ['contato', 'contact']) ?? [];
+        $prestadorInscricaoMunicipal = $this->findValueByAliases($prestador, ['inscricaomunicipal', 'im']);
+        $prestadorEndereco = $this->mapEnderecoNode($this->findNodeByAliases($prestador, ['endereco', 'address']));
+        $prestadorContato = $this->mapContatoNode($this->findNodeByAliases($prestador, ['contato', 'contact']));
+        $prestadorCpfCnpj = array_filter([
+            'Cnpj' => $this->findValueByAliases($prestador, ['cpfcnpj.cnpj', 'identificacaoprestador.cpfcnpj.cnpj', 'cnpj', 'document']),
+            'Cpf' => $this->findValueByAliases($prestador, ['cpfcnpj.cpf', 'identificacaoprestador.cpfcnpj.cpf', 'cpf']),
+        ], static fn ($value) => filled($value));
+
+        $rps = [
+            'IdentificacaoRps' => array_filter([
+                'Numero' => $this->findValueByAliases($inf, ['rps.identificacaorps.numero', 'identificacaorps.numero', 'rpsnumero']),
+                'Serie' => $this->findValueByAliases($inf, ['rps.identificacaorps.serie', 'identificacaorps.serie', 'rpsserie']),
+                'Tipo' => $this->findValueByAliases($inf, ['rps.identificacaorps.tipo', 'identificacaorps.tipo', 'rpstipo']),
+            ], static fn ($value) => filled($value)),
+            'DataEmissao' => $this->findValueByAliases($inf, ['rps.dataemissao', 'dataemissao']),
+            'Status' => $this->findValueByAliases($inf, ['rps.status', 'status']),
+        ];
 
         $tomadorRazao = $this->findValueByAliases($taker, ['razaosocial', 'nomefantasia', 'name', 'companyname']);
         $tomadorDoc = $this->findValueByAliases($taker, ['cpfcnpj', 'cnpj', 'cpf', 'document']);
-        $tomadorEndereco = $this->findNodeByAliases($taker, ['endereco', 'address']) ?? [];
-        $tomadorContato = $this->findNodeByAliases($taker, ['contato', 'contact']) ?? [];
+        $tomadorInscricaoMunicipal = $this->findValueByAliases($taker, ['inscricaomunicipal', 'im']);
+        $tomadorEndereco = $this->mapEnderecoNode($this->findNodeByAliases($taker, ['endereco', 'address']));
+        $tomadorContato = $this->mapContatoNode($this->findNodeByAliases($taker, ['contato', 'contact']));
+        // servicoValores must come from Servico>Valores (ValorServicos, ValorCofins etc.) merged with
+        // ValoresNfse (ValorLiquidoNfse, BaseCalculo, Aliquota) so all fields are populated.
+        $servicoValores = $this->mapValoresNode(array_merge(
+            is_array($valoresNfse) ? $valoresNfse : [],
+            is_array($servicoValoresNode) ? $servicoValoresNode : [],
+        ));
 
         return [
             'Nfse' => [
@@ -295,18 +410,30 @@ class Qive implements NfseWebserverInterface
                     'Numero' => $numero,
                     'DataEmissao' => $dataEmissao,
                     'CodigoVerificacao' => $codigoVerificacao,
+                    'Competencia' => $competencia,
+                    'Rps' => $rps,
+                    'RegimeEspecialTributacao' => $regimeEspecialTributacao,
                     'DescricaoCodigoTributacaoMunicipio' => $descricaoServico ?? $codigoTributacao,
                     'OutrasInformacoes' => $outros,
                     'ValorCredito' => $valorCredito,
                     'PrestadorServico' => [
                         'RazaoSocial' => $prestadorRazao,
                         'NomeFantasia' => $prestadorFantasia ?? $prestadorRazao,
+                        'IdentificacaoPrestador' => [
+                            'CpfCnpj' => $prestadorCpfCnpj,
+                            'InscricaoMunicipal' => $prestadorInscricaoMunicipal,
+                        ],
                         'Endereco' => is_array($prestadorEndereco) ? $prestadorEndereco : [],
                         'Contato' => is_array($prestadorContato) ? $prestadorContato : [],
                     ],
                     'ValoresNfse' => [
                         'BaseCalculo' => $baseCalculo,
                         'ValorLiquidoNfse' => $valorLiquido ?? $valorServicos,
+                        'ValorServicos' => $valorServicos,
+                    ],
+                    'OrgaoGerador' => [
+                        'CodigoMunicipio' => $orgaoGeradorCodigoMunicipio ?? '',
+                        'Uf' => $orgaoGeradorUf ?? '',
                     ],
                     'DeclaracaoPrestacaoServico' => [
                         'InfDeclaracaoPrestacaoServico' => [
@@ -323,6 +450,7 @@ class Qive implements NfseWebserverInterface
                                         'Cnpj' => $tomadorDoc,
                                         'Cpf' => $this->findValueByAliases($taker, ['cpf']),
                                     ], static fn ($value) => filled($value)),
+                                    'InscricaoMunicipal' => $tomadorInscricaoMunicipal,
                                 ],
                                 'Endereco' => is_array($tomadorEndereco) ? $tomadorEndereco : [],
                                 'Contato' => is_array($tomadorContato) ? $tomadorContato : [],
@@ -334,6 +462,7 @@ class Qive implements NfseWebserverInterface
                                         'Cnpj' => $tomadorDoc,
                                         'Cpf' => $this->findValueByAliases($taker, ['cpf']),
                                     ], static fn ($value) => filled($value)),
+                                    'InscricaoMunicipal' => $tomadorInscricaoMunicipal,
                                 ],
                                 'Endereco' => is_array($tomadorEndereco) ? $tomadorEndereco : [],
                                 'Contato' => is_array($tomadorContato) ? $tomadorContato : [],
@@ -342,7 +471,7 @@ class Qive implements NfseWebserverInterface
                                 'Discriminacao' => $descricaoServico,
                                 'CodigoTributacaoMunicipio' => $codigoTributacao,
                                 'ExigibilidadeISS' => $exigibilidadeIss,
-                                'Valores' => is_array($valores) ? $valores : [],
+                                'Valores' => $servicoValores,
                                 'IssRetido' => $this->findValueByAliases($servico, ['issretido', 'istretido']),
                                 'ItemListaServico' => $this->findValueByAliases($servico, ['itemlistaservico', 'itemservico']),
                                 'CodigoCnae' => $this->findValueByAliases($servico, ['codigocnae', 'cnae']),
@@ -362,15 +491,18 @@ class Qive implements NfseWebserverInterface
         $xmlSource = data_get($nota, 'originalXml')
             ?: data_get($nota, 'xmlAbrasf')
             ?: data_get($nota, 'xmlAbrasfRtc')
+            ?: data_get($nota, 'xml')
             ?: data_get($nota, 'event.0.xml');
+        $xmlString = $this->extractXmlString($xmlSource);
 
-        $parsedXml = $this->normalizeXmlToArray($xmlSource)
+        $parsedXml = $this->normalizeXmlToArray($xmlString)
             ?? $this->normalizeXmlToArray(data_get($nota, 'jsonDocument'))
             ?? [];
 
         $parsedXml = $this->buildCanonicalNfseDocument($parsedXml);
 
-        $parsedXml['xml'] = $xmlSource ? base64_encode($xmlSource) : null;
+        $parsedXml['xml'] = $xmlString ? base64_encode($xmlString) : null;
+        $parsedXml['xmlBase64'] = $parsedXml['xml'];
         $parsedXml['__qive'] = [
             'id' => data_get($nota, 'id'),
             'origin' => data_get($nota, 'origin'),
@@ -385,13 +517,70 @@ class Qive implements NfseWebserverInterface
             'originalXml' => data_get($nota, 'originalXml'),
             'xmlAbrasf' => data_get($nota, 'xmlAbrasf'),
             'xmlAbrasfRtc' => data_get($nota, 'xmlAbrasfRtc'),
+            'xml' => data_get($nota, 'xml'),
             'jsonDocument' => data_get($nota, 'jsonDocument'),
         ];
 
         return $parsedXml;
     }
 
-    public function localiza(Request $request, Companies $company): mixed
+    protected function roleEndpoint(Request $request): string
+    {
+        $role = $this->requestedRole($request) === 'taker' ? 'received' : 'emitted';
+
+        return "https://api.arquivei.com.br/v1/nfse/{$role}";
+    }
+
+    protected function buildRoleQuery(Request $request, Companies $company): array
+    {
+        $query = array_filter([
+            'cnpj' => $this->normalizeDigits((string) ($company->cnpj ?? '')),
+            'id' => $request->get('nfse_numero'),
+            'limit' => 50,
+        ], static fn ($value) => filled($value));
+
+        if ($request->filled('data_emissao_inicial')) {
+            $query['created_at[from]'] = $request->get('data_emissao_inicial');
+        }
+
+        if ($request->filled('data_emissao_final')) {
+            $query['created_at[to]'] = $request->get('data_emissao_final');
+        }
+
+        return $query;
+    }
+
+    protected function fetchByRoleEndpoint(Request $request, Companies $company): array
+    {
+        $endpoint = $this->roleEndpoint($request);
+        $response = Http::acceptJson()
+            ->timeout(20)
+            ->withHeaders([
+                'X-API-ID' => $company->api_id,
+                'X-API-KEY' => $company->api_key,
+                'X-Use-ApiGateway' => 'always',
+            ])
+            ->get($endpoint, $this->buildRoleQuery($request, $company));
+
+        $resp = $response->json();
+        if (! is_array($resp)) {
+            $resp = json_decode($response->body(), true) ?? [];
+        }
+
+        if (! $response->successful()) {
+            throw new Exception(data_get($resp, 'status.message') ?? data_get($resp, 'error.message') ?? "Qive retornou HTTP {$response->status()}.");
+        }
+
+        $nfses = data_get($resp, 'data', data_get($resp, 'nfses', []));
+
+        return [
+            'endpoint' => $endpoint,
+            'response' => $resp,
+            'nfses' => is_array($nfses) ? $nfses : [],
+        ];
+    }
+
+    public function localiza(Request $request, Companies $company, bool $processAccounting = true): mixed
     {
         try {
             $filter = $this->buildFilter($request);
@@ -411,8 +600,7 @@ class Qive implements NfseWebserverInterface
             }
 
             $payload = [
-                'filter' => $filter,
-                'projection' => $this->buildProjection(),
+                'filters' => $filter,
             ];
 
             if ($request->filled('nfse_numero')) {
@@ -431,6 +619,7 @@ class Qive implements NfseWebserverInterface
                 $payload['paginator'] = $paginator;
             }
 
+            $endpoint = self::ENDPOINT;
             $response = Http::withHeaders([
                 'X-API-ID' => $company->api_id,
                 'X-API-KEY' => $company->api_key,
@@ -444,11 +633,17 @@ class Qive implements NfseWebserverInterface
                 $resp = json_decode($response->body(), true) ?? [];
             }
 
-            if (! $response->successful() && empty(data_get($resp, 'nfses'))) {
-                throw new Exception(data_get($resp, 'status.message') ?? 'Nenhuma resposta válida foi retornada pela Qive.');
+            $statusCode = $response->status();
+            $nfses = data_get($resp, 'nfses', []);
+
+            if (! $response->successful() || empty($nfses)) {
+                $fallback = $this->fetchByRoleEndpoint($request, $company);
+                $endpoint = $fallback['endpoint'];
+                $resp = $fallback['response'];
+                $nfses = $fallback['nfses'];
+                $statusCode = 200;
             }
 
-            $nfses = data_get($resp, 'nfses', []);
             $notasArray = [];
             $accountingNotas = [];
 
@@ -456,27 +651,26 @@ class Qive implements NfseWebserverInterface
                 $normalized = $this->normalizeNota($nota);
                 $notasArray[] = $normalized;
 
-                $accountingNota = $this->normalizeXmlToArray(data_get($nota, 'jsonDocument'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'originalXml'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'xmlAbrasf'))
-                    ?? $this->normalizeXmlToArray(data_get($nota, 'xmlAbrasfRtc'));
-
-                if ($accountingNota) {
-                    $accountingNotas[] = $accountingNota;
+                if (data_get($normalized, 'Nfse.InfNfse.Numero')) {
+                    $accountingNotas[] = $normalized;
                 }
             }
 
-            if ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true') {
-                $accounting = new AccountingService($company, 'Nfse', 'Onvio');
-                $accounting->processInvoice($accountingNotas);
+            if ($processAccounting && ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true')) {
+                try {
+                    $accounting = new AccountingService($company, 'Nfse', 'Onvio');
+                    $accounting->processInvoice($accountingNotas);
+                } catch (Exception $e) {
+                    Log::error('Erro ao enviar NFS-e para contabilidade: '.$e->getMessage());
+                }
             }
 
             return [
-                'success' => (int) data_get($resp, 'status.code', $response->status()) === 200,
-                'code' => data_get($resp, 'status.code', $response->status()),
+                'success' => (int) data_get($resp, 'status.code', $statusCode) === 200,
+                'code' => data_get($resp, 'status.code', $statusCode),
                 'message' => data_get($resp, 'status.message') ?? $response->reason(),
-                'endpoint' => self::ENDPOINT,
-                'filter' => $payload['filter'],
+                'endpoint' => $endpoint,
+                'filter' => $payload['filters'],
                 'notas' => base64_encode(json_encode($nfses, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
                 'notasarray' => $notasArray,
                 'page' => [

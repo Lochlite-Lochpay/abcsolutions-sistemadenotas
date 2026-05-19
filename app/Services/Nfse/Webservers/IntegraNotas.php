@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
 
 class IntegraNotas implements NfseWebserverInterface
 {
-    public function localiza(Request $request, Companies $company): mixed
+    public function localiza(Request $request, Companies $company, bool $processAccounting = true): mixed
     {
         try {
             $params = [
@@ -92,7 +92,7 @@ class IntegraNotas implements NfseWebserverInterface
             }
 
             // Verifica se o serviço de contabilidade está ativo
-            if ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true') {
+            if ($processAccounting && ($company->accounting == true || $company->accounting == 1 || $company->accounting == 'true')) {
                 // Envia os dados para o serviço de contabilidade
                 $accounting = new AccountingService($company, 'Nfse', 'Onvio');
                 $accounting->processInvoice($notasArray);

@@ -60,13 +60,13 @@ class NfseXmlVersionConversion
 
                 // OrgaoGerador
                 $orgaoGerador = $infNfse->addChild('OrgaoGerador');
-                $orgaoGerador->addChild('CodigoMunicipio', $notasArray['Nfse']['InfNfse']['OrgaoGerador']['CodigoMunicipio']);
-                $orgaoGerador->addChild('Uf', $notasArray['Nfse']['InfNfse']['OrgaoGerador']['Uf']);
+                $orgaoGerador->addChild('CodigoMunicipio', $notasArray['Nfse']['InfNfse']['OrgaoGerador']['CodigoMunicipio'] ?? '');
+                $orgaoGerador->addChild('Uf', $notasArray['Nfse']['InfNfse']['OrgaoGerador']['Uf'] ?? '');
 
                 // DeclaracaoPrestacaoServico
                 $dps = $infNfse->addChild('DeclaracaoPrestacaoServico');
                 $infDps = $dps->addChild('InfDeclaracaoPrestacaoServico');
-                $infDps->addChild('Competencia', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Competencia']);
+                $infDps->addChild('Competencia', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Competencia'] ?? '');
 
                 // Servicos (pode ser array ou único)
                 $servicos = $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Servico'];
@@ -96,30 +96,30 @@ class NfseXmlVersionConversion
                     $servicoArr = $servicos;
                     $servico = $infDps->addChild('Servico');
                     $valores = $servico->addChild('Valores');
-                    $valores->addChild('ValorServicos', $servicoArr['Valores']['ValorServicos']);
-                    $valores->addChild('ValorDeducoes', $servicoArr['Valores']['ValorDeducoes']);
-                    $valores->addChild('ValorPis', $servicoArr['Valores']['ValorPis']);
-                    $valores->addChild('ValorCofins', $servicoArr['Valores']['ValorCofins']);
-                    $valores->addChild('ValorInss', $servicoArr['Valores']['ValorInss']);
-                    $valores->addChild('ValorIr', $servicoArr['Valores']['ValorIr']);
-                    $valores->addChild('ValorCsll', $servicoArr['Valores']['ValorCsll']);
-                    $valores->addChild('OutrasRetencoes', $servicoArr['Valores']['OutrasRetencoes']);
-                    $valores->addChild('ValorIss', $servicoArr['Valores']['ValorIss']);
-                    $valores->addChild('Aliquota', $servicoArr['Valores']['Aliquota']);
-                    $servico->addChild('IssRetido', $servicoArr['IssRetido']);
-                    $servico->addChild('ItemListaServico', $servicoArr['ItemListaServico']);
-                    $servico->addChild('Discriminacao', $servicoArr['Discriminacao']);
-                    $servico->addChild('CodigoMunicipio', $servicoArr['CodigoMunicipio']);
-                    $servico->addChild('CodigoPais', @$servicoArr['CodigoPais'] ?? 'BR');
-                    $servico->addChild('ExigibilidadeISS', $servicoArr['ExigibilidadeISS']);
-                    $servico->addChild('MunicipioIncidencia', $servicoArr['MunicipioIncidencia']);
+                    $valores->addChild('ValorServicos', $servicoArr['Valores']['ValorServicos'] ?? '');
+                    $valores->addChild('ValorDeducoes', $servicoArr['Valores']['ValorDeducoes'] ?? '');
+                    $valores->addChild('ValorPis', $servicoArr['Valores']['ValorPis'] ?? '');
+                    $valores->addChild('ValorCofins', $servicoArr['Valores']['ValorCofins'] ?? '');
+                    $valores->addChild('ValorInss', $servicoArr['Valores']['ValorInss'] ?? '');
+                    $valores->addChild('ValorIr', $servicoArr['Valores']['ValorIr'] ?? '');
+                    $valores->addChild('ValorCsll', $servicoArr['Valores']['ValorCsll'] ?? '');
+                    $valores->addChild('OutrasRetencoes', $servicoArr['Valores']['OutrasRetencoes'] ?? '');
+                    $valores->addChild('ValorIss', $servicoArr['Valores']['ValorIss'] ?? '');
+                    $valores->addChild('Aliquota', $servicoArr['Valores']['Aliquota'] ?? '');
+                    $servico->addChild('IssRetido', $servicoArr['IssRetido'] ?? '');
+                    $servico->addChild('ItemListaServico', $servicoArr['ItemListaServico'] ?? '');
+                    $servico->addChild('Discriminacao', $servicoArr['Discriminacao'] ?? '');
+                    $servico->addChild('CodigoMunicipio', $servicoArr['CodigoMunicipio'] ?? '');
+                    $servico->addChild('CodigoPais', $servicoArr['CodigoPais'] ?? 'BR');
+                    $servico->addChild('ExigibilidadeISS', $servicoArr['ExigibilidadeISS'] ?? '');
+                    $servico->addChild('MunicipioIncidencia', $servicoArr['MunicipioIncidencia'] ?? '');
                 }
 
                 // Prestador
                 $prestadorDps = $infDps->addChild('Prestador');
                 $cpfCnpjPrestador = $prestadorDps->addChild('CpfCnpj');
-                $cpfCnpjPrestador->addChild('Cnpj', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['CpfCnpj']['Cnpj']);
-                $prestadorDps->addChild('InscricaoMunicipal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['InscricaoMunicipal']);
+                $cpfCnpjPrestador->addChild('Cnpj', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['CpfCnpj']['Cnpj'] ?? '');
+                $prestadorDps->addChild('InscricaoMunicipal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['Prestador']['InscricaoMunicipal'] ?? '');
 
                 // Tomador
                 $tomador = $infDps->addChild('Tomador');
@@ -139,8 +139,8 @@ class NfseXmlVersionConversion
                 $contatoTomador = $tomador->addChild('Contato');
                 $contatoTomador->addChild('Telefone', @$notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['TomadorServico']['Contato']['Telefone']);
 
-                $infDps->addChild('OptanteSimplesNacional', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['OptanteSimplesNacional']);
-                $infDps->addChild('IncentivoFiscal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['IncentivoFiscal']);
+                $infDps->addChild('OptanteSimplesNacional', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['OptanteSimplesNacional'] ?? '');
+                $infDps->addChild('IncentivoFiscal', $notasArray['Nfse']['InfNfse']['DeclaracaoPrestacaoServico']['InfDeclaracaoPrestacaoServico']['IncentivoFiscal'] ?? '');
 
                 return [
                     'success' => true,
